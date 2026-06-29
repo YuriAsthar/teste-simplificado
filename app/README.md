@@ -53,6 +53,60 @@ In order to ensure that the Laravel community is welcoming to all, please review
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
+## Code Quality
+
+This project uses a set of static analysis and linting tools to keep the code healthy.
+
+### Environment distinction
+
+- **Local development:** quality tools run inside the `app` Docker container. From the project root, run:
+  ```bash
+  docker compose run --rm app composer <script>
+  ```
+- **CI (GitHub Actions):** quality tools run natively on the runner using `shivammathur/setup-php` and `ramsey/composer-install`, calling the same `composer <script>` commands. This is the standard approach for Laravel projects.
+
+### Available scripts
+
+| Script | Command | Purpose |
+|--------|---------|---------|
+| `lint` | `composer lint` | EasyCodingStandard lint check |
+| `stan` | `composer stan` | PHPStan static analysis |
+| `rector` | `composer rector` | Rector code refactoring |
+| `test` | `composer test` | PHPUnit test suite |
+| `phpmd` | `composer phpmd` | PHPMD mess detection |
+
+### PHPMD
+
+[PHPMD](https://phpmd.org/) scans the codebase for common code smells.
+
+**Configuration file:** `phpmd.xml` in the `app/` directory.
+
+**Enabled rule sets:** `cleancode`, `codesize`, `controversial`, `design`, `naming`, `unusedcode`.
+
+**Run inside the `app` container (local development):**
+
+```bash
+docker compose run --rm app composer phpmd
+```
+
+**Run locally from the host (CI uses this approach):**
+
+```bash
+cd app
+composer phpmd
+```
+
+The `composer phpmd` script runs the locally installed `vendor/bin/phpmd` binary:
+
+```bash
+php -d error_reporting=22527 vendor/bin/phpmd app text phpmd.xml
+```
+
+- **Source:** `app` (the Laravel application source directory when run from `app/`).
+- **Config:** `phpmd.xml` (includes the rule sets above).
+
+**CI behavior:** PHPMD runs automatically as a blocking step on every push and pull request via `.github/workflows/ci.yml`.
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

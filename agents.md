@@ -18,6 +18,7 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 | `/app/phpstan.neon` | PHPStan analysis configuration | Config |
 | `/app/phpstan-baseline.neon` | PHPStan baseline rules | Config |
 | `/app/rector.php` | Rector refactoring configuration | Config |
+| `/app/phpmd.xml` | PHPMD ruleset and exclusions | Config |
 
 ## Services
 - **app**: PHP 8.4-FPM with Laravel 13
@@ -46,12 +47,16 @@ docker compose run --rm app php artisan <command>
 docker compose run --rm app php artisan migrate
 docker compose run --rm app php artisan migrate --env=testing
 
-# Quality tools (run inside app container)
+# Quality tools (run inside app container for local development)
 docker compose run --rm app composer lint
 docker compose run --rm app composer lint-fix
 docker compose run --rm app composer stan
 docker compose run --rm app composer rector
 docker compose run --rm app composer test
+docker compose run --rm app composer phpmd
+
+# CI note: GitHub Actions runs the same composer scripts natively on the runner
+# using shivammathur/setup-php + ramsey/composer-install (standard Laravel pattern).
 ```
 
 ## Related

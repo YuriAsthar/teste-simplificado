@@ -16,6 +16,7 @@
         "laravel/pao": "^1.0.6",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
+        "phpmd/phpmd": "^2.15",
         "phpstan/phpstan": "^2.2",
         "phpunit/phpunit": "^12.5.12",
         "rector/rector": "^2.5",
@@ -64,7 +65,7 @@
             "vendor/bin/rector process --ansi"
         ],
         "phpmd": [
-            "docker run --rm -v $(pwd):/project -w /project jakzal/phpqa:php8.4 php -d error_reporting=22527 /tools/phpmd app text phpmd.xml"
+            "php -d error_reporting=22527 vendor/bin/phpmd app text phpmd.xml"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",

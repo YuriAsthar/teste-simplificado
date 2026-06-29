@@ -12,19 +12,4 @@
     <rule ref="rulesets/design.xml" />
     <rule ref="rulesets/naming.xml" />
     <rule ref="rulesets/unusedcode.xml" />
-
-    <!-- PHPUnit test methods commonly use snake_case names. -->
-    <rule ref="rulesets/controversial.xml/CamelCaseMethodName">
-        <exclude-pattern>tests/*</exclude-pattern>
-    </rule>
-
-    <!-- Laravel factories commonly use facades and helpers that PHPMD flags as static access. -->
-    <rule ref="rulesets/cleancode.xml/StaticAccess">
-        <exclude-pattern>database/factories/*</exclude-pattern>
-    </rule>
-
-    <!-- Factory callbacks (e.g. state(fn (array $attributes) => ...)) receive parameters that are not always referenced. -->
-    <rule ref="rulesets/unusedcode.xml/UnusedFormalParameter">
-        <exclude-pattern>database/factories/*</exclude-pattern>
-    </rule>
 </ruleset>

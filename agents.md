@@ -53,10 +53,7 @@ docker compose run --rm app composer lint-fix
 docker compose run --rm app composer stan
 docker compose run --rm app composer rector
 docker compose run --rm app composer test
-
-# PHPMD must run on the host (requires Docker CLI; the app container has no docker binary)
-# Run from the app/ directory:
-composer phpmd
+docker compose run --rm app composer phpmd
 ```
 
 ## Related

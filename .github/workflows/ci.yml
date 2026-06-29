@@ -16,10 +16,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Build Docker Compose stack
+        run: docker compose up -d app --build
+
+      - name: Install Composer dependencies
+        run: docker compose run --rm app composer install --no-interaction --prefer-dist
+
       - name: Run PHPMD
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/project \
-            -w /project \
-            jakzal/phpqa:php8.4 \
-            php -d error_reporting=22527 /tools/phpmd app text phpmd.xml
+        run: docker compose run --rm app composer phpmd

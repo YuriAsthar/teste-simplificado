@@ -17,10 +17,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run PHPMD
-        continue-on-error: true
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/project \
             -w /project \
             jakzal/phpqa:php8.4 \
-            phpmd app text cleancode,codesize,controversial,design,naming,unusedcode
+            php -d error_reporting=22527 /tools/phpmd app text cleancode,codesize,controversial,design,naming,unusedcode

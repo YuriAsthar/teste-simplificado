@@ -63,27 +63,27 @@ This project uses a set of static analysis and linting tools to keep the code he
 
 **Enabled rule sets:** `cleancode`, `codesize`, `controversial`, `design`, `naming`, `unusedcode`.
 
-**Run locally (inside the `app/` directory):**
+**Run locally from the host (inside the `app/` directory):**
 
 ```bash
 composer phpmd
 ```
 
-**Run via Docker Compose:**
+> **Note:** This command must be run on the host (or any environment with the Docker CLI available). It does **not** work inside the `app` container itself because that container does not include the Docker binary.
+
+The `composer phpmd` script executes the Docker image:
 
 ```bash
-docker compose run --rm app composer phpmd
-```
-
-The `composer phpmd` script executes a pinned Docker image:
-
-```bash
-docker run --rm -v $(pwd):/project -w /project jakzal/phpqa:php8.4 phpmd . text cleancode,codesize,controversial,design,naming,unusedcode
+docker run --rm -v $(pwd):/project -w /project jakzal/phpqa:php8.4 php -d error_reporting=22527 /tools/phpmd app text cleancode,codesize,controversial,design,naming,unusedcode
 ```
 
 > **Note:** This command assumes a POSIX shell (macOS / Linux / WSL / Git Bash) so that `$(pwd)` expands correctly on the host.
 
-**CI behavior:** PHPMD runs automatically as a non-blocking warning step on every push and pull request via `.github/workflows/ci.yml` (`continue-on-error: true`).
+- **Image:** `jakzal/phpqa:php8.4` (matches the project PHP runtime).
+- **Rule sets:** `cleancode`, `codesize`, `controversial`, `design`, `naming`, `unusedcode`.
+- **Deprecation suppression:** The `error_reporting=22527` flag (`E_ALL & ~E_DEPRECATED`) silences PHP 8.4 deprecation noise from PHPMD's bundled dependencies without hiding real violations.
+
+**CI behavior:** PHPMD runs automatically as a blocking step on every push and pull request via `.github/workflows/ci.yml`.
 
 ## License
 

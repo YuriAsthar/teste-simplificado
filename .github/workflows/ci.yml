@@ -48,19 +48,11 @@ jobs:
         run: composer phpmd
 
   build-test:
-    name: Build & Test (PHP ${{ matrix.php }})
+    name: Build & Test
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: app
-
-    strategy:
-      fail-fast: false
-      matrix:
-        php: ['8.4']
-        include:
-          - php: '8.5'
-            experimental: true
 
     services:
       postgres:
@@ -87,8 +79,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    continue-on-error: ${{ matrix.experimental || false }}
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -96,18 +86,23 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ matrix.php }}
+          php-version: '8.4'
           extensions: pdo_pgsql, pgsql, redis
           tools: composer:v2
 
       - name: Copy CI environment
         run: cp .env.ci .env
 
+      - name: Copy CI environment to testing
+        run: cp .env.ci .env.testing
+
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
       - name: Generate application key
-        run: php artisan key:generate
+        run: |
+          php artisan key:generate
+          php artisan key:generate --env=testing
 
       - name: Run migrations
         run: php artisan migrate:fresh --no-interaction --force

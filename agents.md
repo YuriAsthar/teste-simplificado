@@ -47,13 +47,16 @@ docker compose run --rm app php artisan <command>
 docker compose run --rm app php artisan migrate
 docker compose run --rm app php artisan migrate --env=testing
 
-# Quality tools (run inside app container)
+# Quality tools (run inside app container for local development)
 docker compose run --rm app composer lint
 docker compose run --rm app composer lint-fix
 docker compose run --rm app composer stan
 docker compose run --rm app composer rector
 docker compose run --rm app composer test
 docker compose run --rm app composer phpmd
+
+# CI note: GitHub Actions runs the same composer scripts natively on the runner
+# using shivammathur/setup-php + ramsey/composer-install (standard Laravel pattern).
 ```
 
 ## Related

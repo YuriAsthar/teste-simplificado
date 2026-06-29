@@ -12,15 +12,24 @@ jobs:
   phpmd:
     name: PHPMD
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build Docker Compose stack
-        run: docker compose up -d app --build
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          coverage: none
 
       - name: Install Composer dependencies
-        run: docker compose run --rm app composer install --no-interaction --prefer-dist
+        uses: ramsey/composer-install@v3
+        with:
+          working-directory: app
 
       - name: Run PHPMD
-        run: docker compose run --rm app composer phpmd
+        run: composer phpmd

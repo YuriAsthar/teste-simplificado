@@ -63,6 +63,9 @@
         "rector": [
             "vendor/bin/rector process --ansi"
         ],
+        "phpmd": [
+            "docker run --rm -v $(pwd):/project -w /project jakzal/phpqa:php8.4 phpmd . text cleancode,codesize,controversial,design,naming,unusedcode"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

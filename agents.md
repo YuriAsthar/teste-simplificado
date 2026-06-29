@@ -51,6 +51,7 @@ docker compose run --rm app composer lint
 docker compose run --rm app composer lint-fix
 docker compose run --rm app composer stan
 docker compose run --rm app composer rector
+docker compose run --rm app composer phpmd
 docker compose run --rm app composer test
 ```
 

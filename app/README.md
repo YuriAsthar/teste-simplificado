@@ -53,6 +53,38 @@ In order to ensure that the Laravel community is welcoming to all, please review
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
 
+## Code Quality
+
+This project uses a set of static analysis and linting tools to keep the code healthy.
+
+### PHPMD
+
+[PHPMD](https://phpmd.org/) scans the codebase for common code smells.
+
+**Enabled rule sets:** `cleancode`, `codesize`, `controversial`, `design`, `naming`, `unusedcode`.
+
+**Run locally (inside the `app/` directory):**
+
+```bash
+composer phpmd
+```
+
+**Run via Docker Compose:**
+
+```bash
+docker compose run --rm app composer phpmd
+```
+
+The `composer phpmd` script executes a pinned Docker image:
+
+```bash
+docker run --rm -v $(pwd):/project -w /project jakzal/phpqa:php8.4 phpmd . text cleancode,codesize,controversial,design,naming,unusedcode
+```
+
+> **Note:** This command assumes a POSIX shell (macOS / Linux / WSL / Git Bash) so that `$(pwd)` expands correctly on the host.
+
+**CI behavior:** PHPMD runs automatically as a non-blocking warning step on every push and pull request via `.github/workflows/ci.yml` (`continue-on-error: true`).
+
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).

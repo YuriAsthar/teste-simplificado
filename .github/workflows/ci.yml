@@ -22,4 +22,4 @@ jobs:
             -v ${{ github.workspace }}:/project \
             -w /project \
             jakzal/phpqa:php8.4 \
-            php -d error_reporting=22527 /tools/phpmd app text cleancode,codesize,controversial,design,naming,unusedcode
+            php -d error_reporting=22527 /tools/phpmd app text phpmd.xml

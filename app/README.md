@@ -61,7 +61,14 @@ This project uses a set of static analysis and linting tools to keep the code he
 
 [PHPMD](https://phpmd.org/) scans the codebase for common code smells.
 
+**Configuration file:** `phpmd.xml` in the `app/` directory.
+
 **Enabled rule sets:** `cleancode`, `codesize`, `controversial`, `design`, `naming`, `unusedcode`.
+
+**Laravel-specific exclusions declared in `phpmd.xml`:**
+- `tests/*` are excluded from `CamelCaseMethodName` (PHPUnit test methods commonly use snake_case names).
+- `database/factories/*` are excluded from `StaticAccess` (Laravel factories commonly use facades and helpers).
+- `database/factories/*` are excluded from `UnusedFormalParameter` (factory state callbacks receive `$attributes` even when it is not referenced).
 
 **Run locally from the host (inside the `app/` directory):**
 
@@ -74,13 +81,13 @@ composer phpmd
 The `composer phpmd` script executes the Docker image:
 
 ```bash
-docker run --rm -v $(pwd):/project -w /project jakzal/phpqa:php8.4 php -d error_reporting=22527 /tools/phpmd app text cleancode,codesize,controversial,design,naming,unusedcode
+docker run --rm -v $(pwd):/project -w /project jakzal/phpqa:php8.4 php -d error_reporting=22527 /tools/phpmd app text phpmd.xml
 ```
 
 > **Note:** This command assumes a POSIX shell (macOS / Linux / WSL / Git Bash) so that `$(pwd)` expands correctly on the host.
 
 - **Image:** `jakzal/phpqa:php8.4` (matches the project PHP runtime).
-- **Rule sets:** `cleancode`, `codesize`, `controversial`, `design`, `naming`, `unusedcode`.
+- **Config:** `phpmd.xml` (includes the rule sets above and the Laravel-specific exclusions).
 - **Deprecation suppression:** The `error_reporting=22527` flag (`E_ALL & ~E_DEPRECATED`) silences PHP 8.4 deprecation noise from PHPMD's bundled dependencies without hiding real violations.
 
 **CI behavior:** PHPMD runs automatically as a blocking step on every push and pull request via `.github/workflows/ci.yml`.

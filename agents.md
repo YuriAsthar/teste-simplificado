@@ -14,6 +14,10 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 | `/docker-compose.yml` | Multi-service orchestration | Docker Compose |
 | `/app/.env.example` | Sandbox environment template | Config |
 | `/app/.env.testing` | Testing environment config | Config |
+| `/app/ecs.php` | EasyCodingStandard configuration | Config |
+| `/app/phpstan.neon` | PHPStan analysis configuration | Config |
+| `/app/phpstan-baseline.neon` | PHPStan baseline rules | Config |
+| `/app/rector.php` | Rector refactoring configuration | Config |
 
 ## Services
 - **app**: PHP 8.4-FPM with Laravel 13
@@ -41,6 +45,13 @@ docker compose run --rm app php artisan <command>
 # Run migrations
 docker compose run --rm app php artisan migrate
 docker compose run --rm app php artisan migrate --env=testing
+
+# Quality tools (run inside app container)
+docker compose run --rm app composer lint
+docker compose run --rm app composer lint-fix
+docker compose run --rm app composer stan
+docker compose run --rm app composer rector
+docker compose run --rm app composer test
 ```
 
 ## Related

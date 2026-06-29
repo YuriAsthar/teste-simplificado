@@ -2,19 +2,22 @@ name: CI
 
 on:
   push:
-    branches:
-      - '**'
+    branches: [main, master]
   pull_request:
-    branches:
-      - '**'
+    branches: [main, master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  phpmd:
-    name: PHPMD
+  quality:
+    name: Quality Checks
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: app
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,13 +26,86 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
+          extensions: pdo_pgsql, pgsql, redis
           tools: composer:v2
-          coverage: none
 
-      - name: Install Composer dependencies
-        uses: ramsey/composer-install@v3
-        with:
-          working-directory: app
+      - name: Copy CI environment
+        run: cp .env.ci .env
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run linter
+        run: composer lint
+
+      - name: Run static analysis
+        run: composer stan
+
+      - name: Run Rector dry-run
+        run: composer rector -- --dry-run
 
       - name: Run PHPMD
         run: composer phpmd
+
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: wallet_testing
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d wallet_testing"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, pgsql, redis
+          tools: composer:v2
+
+      - name: Copy CI environment
+        run: cp .env.ci .env
+
+      - name: Copy CI environment to testing
+        run: cp .env.ci .env.testing
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Generate application key
+        run: |
+          php artisan key:generate
+          php artisan key:generate --env=testing
+
+      - name: Run migrations
+        run: php artisan migrate:fresh --no-interaction --force
+
+      - name: Run tests
+        run: composer test

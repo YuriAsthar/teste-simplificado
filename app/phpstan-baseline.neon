@@ -5,3 +5,11 @@ parameters:
 			identifier: method.alreadyNarrowedType
 			count: 1
 			path: tests/Unit/ExampleTest.php
+		-
+			message: '#^Call to an undefined method [a-zA-Z0-9\\_]+\:\:shouldReceive\(\)\.$#'
+			identifier: method.notFound
+			path: tests
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			path: tests

@@ -26,8 +26,9 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: pdo_pgsql, pgsql, redis
+          extensions: pdo_pgsql, pgsql, redis, rdkafka, zip
           tools: composer:v2
+          coverage: none
 
       - name: Copy CI environment
         run: cp .env.ci .env
@@ -87,8 +88,9 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: pdo_pgsql, pgsql, redis
+          extensions: pdo_pgsql, pgsql, redis, rdkafka, zip
           tools: composer:v2
+          coverage: none
 
       - name: Copy CI environment
         run: cp .env.ci .env

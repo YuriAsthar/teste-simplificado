@@ -24,7 +24,6 @@ class Wallet extends Model
 
     protected $fillable = [
         'user_id',
-        'balance_cents',
         'currency',
     ];
 
@@ -36,7 +35,7 @@ class Wallet extends Model
     protected function casts(): array
     {
         return [
-            'balance_cents' => MoneyCast::class,
+            'balance' => MoneyCast::class,
             'currency' => CurrencyType::class,
         ];
     }

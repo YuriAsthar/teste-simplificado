@@ -210,7 +210,7 @@ final readonly class WalletTransferService
             $lockedPayerWallet = $lockedFirst->id === $payerWallet->id ? $lockedFirst : $lockedSecond;
             $lockedPayeeWallet = $lockedFirst->id === $payeeWallet->id ? $lockedFirst : $lockedSecond;
 
-            $payerBalance = (int) $lockedPayerWallet->getRawOriginal('balance_cents');
+            $payerBalance = (int) $lockedPayerWallet->getRawOriginal('balance');
 
             if ($payerBalance < $amountCents) {
                 $transfer = $this->createFailedTransfer(
@@ -226,17 +226,17 @@ final readonly class WalletTransferService
                 return $transfer;
             }
 
-            $lockedPayerWallet->balance_cents = $payerBalance - $amountCents;
+            $lockedPayerWallet->balance = $payerBalance - $amountCents;
             $lockedPayerWallet->save();
 
-            $payeeBalance = (int) $lockedPayeeWallet->getRawOriginal('balance_cents');
-            $lockedPayeeWallet->balance_cents = $payeeBalance + $amountCents;
+            $payeeBalance = (int) $lockedPayeeWallet->getRawOriginal('balance');
+            $lockedPayeeWallet->balance = $payeeBalance + $amountCents;
             $lockedPayeeWallet->save();
 
             $transfer = Transfer::create([
                 'payer_id' => $payer->id,
                 'payee_id' => $payee->id,
-                'amount_cents' => $amountCents,
+                'amount' => $amountCents,
                 'currency' => $payerWallet->currency->value,
                 'idempotency_key' => $idempotencyKey,
                 'status' => TransferStatus::Completed,
@@ -282,7 +282,7 @@ final readonly class WalletTransferService
         $transfer = Transfer::create([
             'payer_id' => $payerId,
             'payee_id' => $payeeId,
-            'amount_cents' => $amountCents,
+            'amount' => $amountCents,
             'currency' => CurrencyType::BRA->value,
             'idempotency_key' => $idempotencyKey,
             'status' => TransferStatus::Failed,

@@ -28,7 +28,7 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => 25.00,
+            'value' => '25.00',
         ]);
 
         $response->assertUnauthorized();
@@ -45,7 +45,7 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => 25.00,
+            'value' => '25.00',
         ]);
 
         $response->assertForbidden();
@@ -63,14 +63,14 @@ final class TransferControllerTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $payer->wallet->update(['balance_cents' => 10000]);
+        $payer->wallet->forceFill(['balance' => 10000])->save();
 
         Sanctum::actingAs($payer);
 
         $response = $this->postJson('/api/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => 25.00,
+            'value' => '25.00',
         ], [
             'Idempotency-Key' => 'transfer-1',
         ]);
@@ -79,8 +79,8 @@ final class TransferControllerTest extends TestCase
             ->assertJsonPath('data.status', TransferStatus::Completed->value)
             ->assertJsonPath('data.failure_reason', null);
 
-        $this->assertSame(7500, (int) $payer->fresh()?->wallet->getRawOriginal('balance_cents'));
-        $this->assertSame(2500, (int) $payee->fresh()?->wallet->getRawOriginal('balance_cents'));
+        $this->assertSame(7500, (int) $payer->fresh()?->wallet->getRawOriginal('balance'));
+        $this->assertSame(2500, (int) $payee->fresh()?->wallet->getRawOriginal('balance'));
 
         Queue::assertPushed(SendTransferNotificationJob::class);
     }
@@ -97,14 +97,14 @@ final class TransferControllerTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $payer->wallet->update(['balance_cents' => 100]);
+        $payer->wallet->forceFill(['balance' => 100])->save();
 
         Sanctum::actingAs($payer);
 
         $response = $this->postJson('/api/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => 5.00,
+            'value' => '5.00',
         ]);
 
         $response->assertStatus(422)
@@ -129,7 +129,7 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/transfer', [
             'payer' => $merchant->id,
             'payee' => $payee->id,
-            'value' => 10.00,
+            'value' => '10.00',
         ]);
 
         $response->assertStatus(422)
@@ -148,14 +148,14 @@ final class TransferControllerTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $payer->wallet->update(['balance_cents' => 10000]);
+        $payer->wallet->forceFill(['balance' => 10000])->save();
 
         Sanctum::actingAs($payer);
 
         $response = $this->postJson('/api/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => 10.00,
+            'value' => '10.00',
         ]);
 
         $response->assertStatus(422)
@@ -174,7 +174,7 @@ final class TransferControllerTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $payer->wallet->update(['balance_cents' => 10000]);
+        $payer->wallet->forceFill(['balance' => 10000])->save();
         $payee->wallet->delete();
 
         Sanctum::actingAs($payer);
@@ -182,7 +182,7 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => 10.00,
+            'value' => '10.00',
         ]);
 
         $response->assertStatus(422)
@@ -201,7 +201,7 @@ final class TransferControllerTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $payer->wallet->update(['balance_cents' => 10000]);
+        $payer->wallet->forceFill(['balance' => 10000])->save();
         $payee->wallet->update(['currency' => CurrencyType::USD->value]);
 
         Sanctum::actingAs($payer);
@@ -209,7 +209,7 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => 10.00,
+            'value' => '10.00',
         ]);
 
         $response->assertStatus(422)
@@ -228,14 +228,14 @@ final class TransferControllerTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $payer->wallet->update(['balance_cents' => 10000]);
+        $payer->wallet->forceFill(['balance' => 10000])->save();
 
         Sanctum::actingAs($payer);
 
         $payload = [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => 10.00,
+            'value' => '10.00',
         ];
 
         $first = $this->postJson('/api/transfer', $payload, [
@@ -262,7 +262,7 @@ final class TransferControllerTest extends TestCase
 
         $response = $this->postJson('/api/transfer', [
             'payee' => $payer->id,
-            'value' => 10.00,
+            'value' => '10.00',
         ]);
 
         $response->assertStatus(422)
@@ -279,7 +279,7 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => 0,
+            'value' => '0',
         ]);
 
         $response->assertStatus(422)
@@ -295,7 +295,7 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/transfer', [
             'payer' => $payer->id,
             'payee' => $payer->id,
-            'value' => 10.00,
+            'value' => '10.00',
         ]);
 
         $response->assertStatus(422)

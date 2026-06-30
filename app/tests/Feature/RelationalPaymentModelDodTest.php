@@ -12,6 +12,8 @@ use App\Models\Transfer;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -66,20 +68,98 @@ final class RelationalPaymentModelDodTest extends TestCase
         $this->assertDatabaseHas('wallets', [
             'user_id' => $user->id,
             'currency' => CurrencyType::BRA->value,
-            'balance_cents' => 0,
+            'balance' => 0,
         ]);
     }
 
-    public function test_money_cast_converts_cents_to_decimal_and_back(): void
+    public function test_wallets_balance_column_defaults_to_zero_and_is_bigint(): void
+    {
+        $user = User::factory()->create();
+
+        $column = $this->findColumn('wallets', 'balance');
+
+        $this->assertNotNull($column);
+        $this->assertSame('bigint', $column['type'] ?? null);
+        $this->assertSame(0, $user->wallet->balance);
+    }
+
+    public function test_transfers_amount_column_is_required_bigint(): void
+    {
+        $column = $this->findColumn('transfers', 'amount');
+
+        $this->assertNotNull($column);
+        $this->assertSame('bigint', $column['type'] ?? null);
+        $this->assertFalse($column['nullable'] ?? true);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function findColumn(string $table, string $name): ?array
+    {
+        foreach (Schema::getColumns($table) as $column) {
+            if (($column['name'] ?? '') === $name) {
+                return $column;
+            }
+        }
+
+        return null;
+    }
+
+    public function test_creating_transfer_without_amount_fails(): void
+    {
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        $this->expectException(QueryException::class);
+
+        DB::table('transfers')->insert([
+            'payer_id' => $payer->id,
+            'payee_id' => $payee->id,
+            'currency' => CurrencyType::BRA->value,
+            'idempotency_key' => 'missing-amount',
+            'status' => TransferStatus::Completed->value,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    public function test_money_cast_returns_int_from_database_value(): void
     {
         $cast = new MoneyCast();
         $model = new User();
 
-        $this->assertSame('10.50', $cast->get($model, 'balance_cents', 1050, []));
-        $this->assertSame(1050, $cast->set($model, 'balance_cents', '10.50', []));
-        $this->assertSame(1050, $cast->set($model, 'balance_cents', 1050, []));
-        $this->assertSame(205, $cast->set($model, 'balance_cents', '2.05', []));
-        $this->assertNull($cast->set($model, 'balance_cents', null, []));
+        $this->assertSame(1050, $cast->get($model, 'balance', '1050', []));
+        $this->assertSame(1050, $cast->get($model, 'balance', 1050, []));
+    }
+
+    public function test_money_cast_set_accepts_int_only(): void
+    {
+        $cast = new MoneyCast();
+        $model = new User();
+
+        $this->assertSame(1050, $cast->set($model, 'balance', 1050, []));
+    }
+
+    public function test_money_cast_set_rejects_non_int_values(): void
+    {
+        $cast = new MoneyCast();
+        $model = new User();
+
+        $this->expectException(InvalidArgumentException::class);
+
+        /** @phpstan-ignore-next-line argument.type */
+        $cast->set($model, 'balance', '10.50', []);
+    }
+
+    public function test_money_cast_get_rejects_null(): void
+    {
+        $cast = new MoneyCast();
+        $model = new User();
+
+        $this->expectException(InvalidArgumentException::class);
+
+        $cast->get($model, 'balance', null, []);
     }
 
     public function test_transfer_status_invalid_transition_throws_exception(): void

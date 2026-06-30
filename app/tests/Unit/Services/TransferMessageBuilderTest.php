@@ -16,7 +16,7 @@ final class TransferMessageBuilderTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
             'occurred_at' => now()->toIso8601String(),
         ];
 
@@ -31,7 +31,7 @@ final class TransferMessageBuilderTest extends TestCase
         $this->assertSame('txn_123', $message['envelope']['payload']['transfer_id']);
         $this->assertSame(1, $message['envelope']['payload']['payer_id']);
         $this->assertSame(2, $message['envelope']['payload']['payee_id']);
-        $this->assertSame(1000, $message['envelope']['payload']['amount_cents']);
+        $this->assertSame(1000, $message['envelope']['payload']['amount']);
     }
 
     public function test_get_topic_returns_wallet_transfer_completed(): void

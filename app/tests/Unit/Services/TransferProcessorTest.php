@@ -52,7 +52,7 @@ final class TransferProcessorTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
     }
 
@@ -76,7 +76,7 @@ final class TransferProcessorTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
     }
 
@@ -97,7 +97,7 @@ final class TransferProcessorTest extends TestCase
         $processor->process([
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
     }
 
@@ -127,7 +127,7 @@ final class TransferProcessorTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
     }
 
@@ -151,7 +151,7 @@ final class TransferProcessorTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
 
         $entries = $context->flush();
@@ -183,7 +183,7 @@ final class TransferProcessorTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
 
         $this->assertCount(0, $context->flush());

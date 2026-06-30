@@ -28,7 +28,7 @@ final class TransferMessageConsumerTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ];
 
         $processor->shouldReceive('process')
@@ -61,7 +61,7 @@ final class TransferMessageConsumerTest extends TestCase
             'payload' => [
                 'payer_id' => 5,
                 'payee_id' => 6,
-                'amount_cents' => 1000,
+                'amount' => 1000,
             ],
         ];
 
@@ -84,7 +84,7 @@ final class TransferMessageConsumerTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ];
 
         $exception = new RuntimeException('processor failed');
@@ -124,7 +124,7 @@ final class TransferMessageConsumerTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ];
 
         $exception = new RuntimeException('processor failed');
@@ -163,7 +163,7 @@ final class TransferMessageConsumerTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ];
 
         $message = [
@@ -211,7 +211,7 @@ final class TransferMessageConsumerTest extends TestCase
                 'transfer_id' => '',
                 'payer_id' => 1,
                 'payee_id' => 2,
-                'amount_cents' => 1000,
+                'amount' => 1000,
             ],
         ];
 
@@ -241,7 +241,7 @@ final class TransferMessageConsumerTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ];
 
         $exception = new RuntimeException('processor failed');
@@ -283,7 +283,7 @@ final class TransferMessageConsumerTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ];
 
         $message = [

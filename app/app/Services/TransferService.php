@@ -54,7 +54,7 @@ final readonly class TransferService
             'transfer_id' => $transferId,
             'payer_id' => $payerId,
             'payee_id' => $payeeId,
-            'amount_cents' => $amountCents,
+            'amount' => $amountCents,
             'occurred_at' => now()->toIso8601String(),
         ];
 
@@ -73,7 +73,7 @@ final readonly class TransferService
             'transfer_id' => $transferId,
             'payer_id' => $payerId,
             'payee_id' => $payeeId,
-            'amount_cents' => $amountCents,
+            'amount' => $amountCents,
         ]);
 
         return [

@@ -31,7 +31,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ];
 
         $processor->shouldReceive('process')
@@ -124,7 +124,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ];
 
         $processor->shouldReceive('process')
@@ -162,7 +162,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ];
 
         $message = $this->buildMessage(Carbon::now()->subMinute(), $payload, 3);
@@ -202,7 +202,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ];
 
         $processor->shouldReceive('process')
@@ -239,7 +239,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
         'transfer_id' => 'txn_123',
         'payer_id' => 1,
         'payee_id' => 2,
-        'amount_cents' => 1000,
+        'amount' => 1000,
     ], int $attempt = 1): array
     {
         return [

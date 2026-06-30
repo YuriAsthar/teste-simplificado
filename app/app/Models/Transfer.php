@@ -28,7 +28,7 @@ class Transfer extends Model
     protected $fillable = [
         'payer_id',
         'payee_id',
-        'amount_cents',
+        'amount',
         'currency',
         'idempotency_key',
         'status',
@@ -44,7 +44,7 @@ class Transfer extends Model
     protected function casts(): array
     {
         return [
-            'amount_cents' => MoneyCast::class,
+            'amount' => MoneyCast::class,
             'currency' => CurrencyType::class,
             'status' => TransferStatus::class,
             'failure_reason' => FailureReason::class,

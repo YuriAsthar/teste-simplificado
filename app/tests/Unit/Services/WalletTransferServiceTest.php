@@ -50,7 +50,7 @@ final class WalletTransferServiceTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $payer->wallet->update(['balance_cents' => 10000]);
+        $payer->wallet->forceFill(['balance' => 10000])->save();
 
         $this->authorizer->shouldReceive('authorize')
             ->once()
@@ -69,8 +69,8 @@ final class WalletTransferServiceTest extends TestCase
         $transfer = $service->execute($payer->id, $payee->id, 2500, 'key-1');
 
         $this->assertSame(TransferStatus::Completed, $transfer->status);
-        $this->assertSame(7500, (int) $payer->fresh()?->wallet->getRawOriginal('balance_cents'));
-        $this->assertSame(2500, (int) $payee->fresh()?->wallet->getRawOriginal('balance_cents'));
+        $this->assertSame(7500, (int) $payer->fresh()?->wallet->getRawOriginal('balance'));
+        $this->assertSame(2500, (int) $payee->fresh()?->wallet->getRawOriginal('balance'));
     }
 
     public function test_it_fails_when_payer_is_merchant(): void
@@ -113,7 +113,7 @@ final class WalletTransferServiceTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $payer->wallet->update(['balance_cents' => 10000]);
+        $payer->wallet->forceFill(['balance' => 10000])->save();
         $payee->wallet->update(['currency' => CurrencyType::USD->value]);
 
         $service = new WalletTransferService(
@@ -132,7 +132,7 @@ final class WalletTransferServiceTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $payer->wallet->update(['balance_cents' => 10000]);
+        $payer->wallet->forceFill(['balance' => 10000])->save();
 
         $this->authorizer->shouldReceive('authorize')
             ->once()
@@ -154,7 +154,7 @@ final class WalletTransferServiceTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $payer->wallet->update(['balance_cents' => 10000]);
+        $payer->wallet->forceFill(['balance' => 10000])->save();
 
         $this->authorizer->shouldReceive('authorize')
             ->once()

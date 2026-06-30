@@ -14,10 +14,7 @@ final readonly class CreateUserWallet
     {
         $event->user->wallet()->firstOrCreate(
             ['user_id' => $event->user->id],
-            [
-                'balance_cents' => 0,
-                'currency' => CurrencyType::BRA->value,
-            ]
+            ['currency' => CurrencyType::BRA->value]
         );
     }
 }

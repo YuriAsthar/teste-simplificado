@@ -29,7 +29,7 @@ class TransferFactory extends Factory
         return [
             'payer_id' => $payer,
             'payee_id' => $payee,
-            'amount_cents' => fake()->numberBetween(1, 100000),
+            'amount' => fake()->numberBetween(1, 100000),
             'currency' => CurrencyType::BRA->value,
             'idempotency_key' => fake()->uuid(),
             'status' => TransferStatus::Completed->value,

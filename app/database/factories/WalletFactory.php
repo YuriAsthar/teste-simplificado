@@ -27,8 +27,15 @@ class WalletFactory extends Factory
     public function definition(): array
     {
         return [
-            'balance_cents' => 0,
+            'user_id' => User::factory(),
             'currency' => CurrencyType::BRA->value,
         ];
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(static function (Wallet $wallet): void {
+            $wallet->forceFill(['balance' => 0])->save();
+        });
     }
 }

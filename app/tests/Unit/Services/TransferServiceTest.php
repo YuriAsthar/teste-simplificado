@@ -7,6 +7,7 @@ namespace Tests\Unit\Services;
 use App\Contracts\TransferPublisherInterface;
 use App\Jobs\SendNotificationJob;
 use App\Models\User;
+use App\Services\TransferMessageBuilder;
 use App\Services\TransferService;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Cache\Repository;
@@ -33,6 +34,8 @@ final class TransferServiceTest extends TestCase
 
     private User $user;
 
+    private TransferMessageBuilder $messageBuilder;
+
     /** @var LoggerInterface&MockObject */
     private LoggerInterface $logger;
 
@@ -44,12 +47,14 @@ final class TransferServiceTest extends TestCase
         $this->dispatcher = $this->mock(Dispatcher::class);
         $this->publisher = $this->mock(TransferPublisherInterface::class);
         $this->user = new User();
+        $this->messageBuilder = new TransferMessageBuilder();
         $this->logger = $this->createMock(LoggerInterface::class);
 
         $this->transferService = new TransferService(
             $this->cache,
             $this->dispatcher,
             $this->publisher,
+            $this->messageBuilder,
             $this->user,
             $this->logger,
         );
@@ -81,11 +86,17 @@ final class TransferServiceTest extends TestCase
 
         $this->publisher
             ->shouldReceive('publish')
-            ->withArgs(static fn (string $topic, array $payload): bool => $topic === 'transfers'
-                && str_starts_with($payload['transfer_id'], 'txn_')
-                && $payload['payer_id'] === $payer->id
-                && $payload['payee_id'] === $payee->id
-                && $payload['amount_cents'] === 2500);
+            ->withArgs(static fn (string $topic, array $envelope, ?string $key): bool => $topic === 'wallet.transfer.completed'
+                && is_string($key)
+                && str_starts_with($key, 'txn_')
+                && isset($envelope['meta'], $envelope['payload'])
+                && $envelope['meta']['event'] === 'transfer.authorized'
+                && $envelope['meta']['version'] === '1.0'
+                && is_string($envelope['meta']['occurred_at'])
+                && str_starts_with($envelope['payload']['transfer_id'], 'txn_')
+                && $envelope['payload']['payer_id'] === $payer->id
+                && $envelope['payload']['payee_id'] === $payee->id
+                && $envelope['payload']['amount_cents'] === 2500);
 
         $this->dispatcher
             ->shouldReceive('dispatch')

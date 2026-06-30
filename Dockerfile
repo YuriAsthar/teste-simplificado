@@ -1,19 +1,20 @@
 FROM php:8.4-fpm
 
-# Install system dependencies for PostgreSQL, zip, and other extensions
+# Install system dependencies for PostgreSQL, zip, RabbitMQ, Kafka, and other extensions
 RUN apt-get update && apt-get install -y \
     libpq-dev \
     libzip-dev \
     unzip \
     git \
     curl \
+    librdkafka-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_pgsql pgsql zip
 
-# Install Redis extension via PECL
-RUN pecl install redis && docker-php-ext-enable redis
+# Install Redis and rdkafka extensions via PECL
+RUN pecl install redis rdkafka && docker-php-ext-enable redis rdkafka
 
 # Copy Composer from official Composer image
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

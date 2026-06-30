@@ -20,6 +20,7 @@ final readonly class TransferService
         private Repository $cache,
         private Dispatcher $dispatcher,
         private TransferPublisherInterface $publisher,
+        private TransferMessageBuilder $messageBuilder,
         private User $user,
         private LoggerInterface $logger,
     ) {
@@ -49,14 +50,16 @@ final readonly class TransferService
         }
 
         $transferId = $this->generateTransferId();
-
-        $this->publisher->publish('transfers', [
+        $payload = [
             'transfer_id' => $transferId,
             'payer_id' => $payerId,
             'payee_id' => $payeeId,
             'amount_cents' => $amountCents,
             'occurred_at' => now()->toIso8601String(),
-        ]);
+        ];
+
+        $message = $this->messageBuilder->build($payload);
+        $this->publisher->publish($message['topic'], $message['envelope'], $message['key']);
 
         $this->dispatcher->dispatch(
             new SendNotificationJob($payerId, $payeeId, $amountCents, $transferId)

@@ -153,7 +153,7 @@ final readonly class WalletTransferService
         int $amountCents,
         ?string $providedKey,
     ): string {
-        if (!empty($providedKey)) {
+        if (!in_array($providedKey, [null, '', '0'], true)) {
             return $providedKey;
         }
 
@@ -289,7 +289,7 @@ final readonly class WalletTransferService
             'failure_reason' => $reason,
         ]);
 
-        if (!empty($idempotencyKey)) {
+        if (!in_array($idempotencyKey, [null, '', '0'], true)) {
             try {
                 $this->upsertIdempotencyKey($idempotencyKey, $transfer);
             } catch (\Throwable $exception) {

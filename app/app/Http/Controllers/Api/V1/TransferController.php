@@ -29,9 +29,9 @@ final class TransferController extends Controller
         $payerWallet = Wallet::findOrFail($validated['payer_wallet_id']);
 
         $authenticatedUser = $request->user();
-        $userId = !is_null($authenticatedUser)
-            ? $authenticatedUser->id
-            : $payerWallet->user_id;
+        $userId = is_null($authenticatedUser)
+            ? $payerWallet->user_id
+            : $authenticatedUser->id;
 
         $transfer = $this->service->execute(
             $userId,

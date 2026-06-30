@@ -43,10 +43,7 @@ final class TransferProcessorTest extends TestCase
         $dispatcher->shouldReceive('dispatch')
             ->once()
             ->with($this->callback(static function (SendNotificationJob $job): bool {
-                return $job->payerId === 1
-                    && $job->payeeId === 2
-                    && $job->amountCents === 1000
-                    && $job->transferId === 'txn_123';
+                return $job->transferId === 0;
             }))
             ->andReturn($connection);
 

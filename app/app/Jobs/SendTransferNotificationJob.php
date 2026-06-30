@@ -13,7 +13,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class SendNotificationJob implements ShouldQueue
+final class SendTransferNotificationJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -22,9 +22,12 @@ final class SendNotificationJob implements ShouldQueue
 
     public int $tries = 3;
 
+    public int $backoff = 10;
+
     public function __construct(
         public readonly int $transferId,
     ) {
+        $this->onConnection('redis');
     }
 
     public function handle(NotificationClient $client): void
@@ -49,6 +52,14 @@ final class SendNotificationJob implements ShouldQueue
 
         Log::warning('Notification service returned non-success.', [
             'transfer_id' => $this->transferId,
+        ]);
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::warning('Notification job failed permanently.', [
+            'transfer_id' => $this->transferId,
+            'exception' => $exception->getMessage(),
         ]);
     }
 }

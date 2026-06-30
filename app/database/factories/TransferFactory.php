@@ -6,40 +6,35 @@ use App\Enums\CurrencyType;
 use App\Enums\TransferStatus;
 use App\Models\Transfer;
 use App\Models\User;
-use App\Models\Wallet;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory<Transfer>
+ * @extends Factory\u003cTransfer\u003e
  */
 class TransferFactory extends Factory
 {
     /**
-     * The name of the factory's corresponding model.
-     *
-     * @var class-string<Transfer>
+     * @var class-string\u003cTransfer\u003e
      */
     protected $model = Transfer::class;
 
     /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
+     * @return array\u003cstring, mixed\u003e
      */
     public function definition(): array
     {
-        $payer = User::factory()->create();
-        $payee = User::factory()->create();
+        $payer = User::factory();
+        $payee = User::factory();
 
         return [
-            'user_id' => $payer->id,
-            'payer_wallet_id' => $payer->wallet->id,
-            'payee_wallet_id' => $payee->wallet->id,
+            'payer_id' => $payer,
+            'payee_id' => $payee,
             'amount_cents' => fake()->numberBetween(1, 100000),
             'currency' => CurrencyType::BRA->value,
             'idempotency_key' => fake()->uuid(),
             'status' => TransferStatus::Completed->value,
             'failure_reason' => null,
+            'notified_at' => null,
         ];
     }
 }

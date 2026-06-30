@@ -1,0 +1,27 @@
+# Tests
+
+## Overview
+Test suite for the Laravel application: unit tests for isolated components and feature tests for end-to-end behavior.
+
+## Structure
+| File/Folder | Purpose | Type |
+|-------------|---------|------|
+| `Feature/` | End-to-end HTTP, console, and integration tests. | Directory |
+| `Unit/` | Isolated unit tests for services, jobs, and helpers. | Directory |
+| `TestCase.php` | Base test case shared across the suite. | PHP |
+
+## Conventions
+- Feature tests use `LazilyRefreshDatabase`.
+- Unit tests use Mockery and clean up in `tearDown()`.
+- External HTTP calls are faked with `Http::fake()`.
+- PHPStan baseline contains intentional ignores for Mockery mock assignments in tests.
+
+## Commands
+```bash
+docker compose run --rm app composer test
+docker compose run --rm app ./vendor/bin/phpunit --filter=AuthorizerClientTest
+```
+
+## Related
+- Parent: /app/agents.md
+- Children: /app/tests/Feature/agents.md, /app/tests/Unit/agents.md

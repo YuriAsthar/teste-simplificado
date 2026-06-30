@@ -7,266 +7,300 @@ namespace App\Services;
 use App\Enums\CurrencyType;
 use App\Enums\FailureReason;
 use App\Enums\TransferStatus;
+use App\Enums\UserType;
+use App\Models\IdempotencyKey;
 use App\Models\Transfer;
+use App\Models\User;
 use App\Models\Wallet;
-use Illuminate\Contracts\Cache\Lock;
-use Illuminate\Contracts\Cache\LockTimeoutException;
-use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Contracts\Bus\Dispatcher;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use PDOException;
+use Psr\Log\LoggerInterface;
+use RuntimeException;
 
 /**
  * @SuppressWarnings("PHPMD.StaticAccess")
  */
-class WalletTransferService
+final readonly class WalletTransferService
 {
-    private const int LOCK_TIMEOUT_SECONDS = 10;
-
-    private const int LOCK_TTL_SECONDS = 30;
+    public function __construct(
+        private AuthorizerClient $authorizer,
+        private Dispatcher $dispatcher,
+        private LoggerInterface $logger,
+    ) {
+    }
 
     public function execute(
-        int $userId,
-        int $payerWalletId,
-        int $payeeWalletId,
+        int $payerId,
+        int $payeeId,
         int $amountCents,
-        string $idempotencyKey,
+        ?string $idempotencyKey = null,
     ): Transfer {
-        $existingTransfer = $this->findExistingTransfer($userId, $idempotencyKey);
+        if ($payerId === $payeeId) {
+            return $this->createFailedTransfer(
+                $payerId,
+                $payeeId,
+                $amountCents,
+                null,
+                FailureReason::SamePayerAndPayee,
+            );
+        }
+
+        if ($amountCents <= 0) {
+            return $this->createFailedTransfer(
+                $payerId,
+                $payeeId,
+                $amountCents,
+                null,
+                FailureReason::InvalidAmount,
+            );
+        }
+
+        $key = $this->resolveIdempotencyKey($payerId, $payeeId, $amountCents, $idempotencyKey);
+
+        $existingTransfer = $this->findExistingTransfer($key);
 
         if (!is_null($existingTransfer)) {
             return $existingTransfer;
         }
 
-        if ($amountCents <= 0) {
+        $payer = $this->findActiveUser($payerId);
+        $payee = $this->findActiveUser($payeeId);
+
+        if (is_null($payer)) {
             return $this->createFailedTransfer(
-                $userId,
-                $payerWalletId,
-                $payeeWalletId,
+                $payerId,
+                $payeeId,
                 $amountCents,
-                $idempotencyKey,
-                FailureReason::InvalidAmount,
+                $key,
+                FailureReason::PayerNotFound,
             );
         }
 
-        $locks = $this->acquireWalletLocks($payerWalletId, $payeeWalletId);
-
-        try {
-            return $this->runInTransaction(
-                $userId,
-                $payerWalletId,
-                $payeeWalletId,
-                $amountCents,
-                $idempotencyKey,
-            );
-        } catch (QueryException $exception) {
-            if ($this->isUniqueConstraintViolation($exception)) {
-                $existingTransfer = $this->findExistingTransfer($userId, $idempotencyKey);
-
-                if (!is_null($existingTransfer)) {
-                    return $existingTransfer;
-                }
-            }
-
+        if (is_null($payee)) {
             return $this->createFailedTransfer(
-                $userId,
-                $payerWalletId,
-                $payeeWalletId,
+                $payerId,
+                $payeeId,
                 $amountCents,
-                $idempotencyKey,
-                FailureReason::IdempotencyConflict,
+                $key,
+                FailureReason::PayeeNotFound,
             );
-        } catch (LockTimeoutException) {
-            return $this->createFailedTransfer(
-                $userId,
-                $payerWalletId,
-                $payeeWalletId,
-                $amountCents,
-                $idempotencyKey,
-                FailureReason::WalletLocked,
-            );
-        } finally {
-            $this->releaseLocks($locks);
         }
+
+        /** @var UserType $userType */
+        $userType = $payer->type;
+
+        if ($userType->isMerchant()) {
+            return $this->createFailedTransfer(
+                $payerId,
+                $payeeId,
+                $amountCents,
+                $key,
+                FailureReason::PayerIsMerchant,
+            );
+        }
+
+        $payerWallet = $payer->wallet;
+        $payeeWallet = $payee->wallet;
+
+        if (is_null($payerWallet) || $payerWallet->trashed()) {
+            return $this->createFailedTransfer(
+                $payerId,
+                $payeeId,
+                $amountCents,
+                $key,
+                FailureReason::WalletInactive,
+            );
+        }
+
+        if (is_null($payeeWallet) || $payeeWallet->trashed()) {
+            return $this->createFailedTransfer(
+                $payerId,
+                $payeeId,
+                $amountCents,
+                $key,
+                FailureReason::WalletInactive,
+            );
+        }
+
+        if ($payerWallet->currency->value !== $payeeWallet->currency->value) {
+            return $this->createFailedTransfer(
+                $payerId,
+                $payeeId,
+                $amountCents,
+                $key,
+                FailureReason::CurrencyMismatch,
+            );
+        }
+
+        if (!$this->authorizer->authorize()) {
+            return $this->createFailedTransfer(
+                $payerId,
+                $payeeId,
+                $amountCents,
+                $key,
+                FailureReason::AuthorizerRejected,
+            );
+        }
+
+        return $this->runInTransaction($payer, $payee, $payerWallet, $payeeWallet, $amountCents, $key);
     }
 
-    private function findExistingTransfer(int $userId, string $idempotencyKey): ?Transfer
+    private function resolveIdempotencyKey(
+        int $payerId,
+        int $payeeId,
+        int $amountCents,
+        ?string $providedKey,
+    ): string {
+        if (!empty($providedKey)) {
+            return $providedKey;
+        }
+
+        return hash('sha256', "transfer:{$payerId}:{$payeeId}:{$amountCents}");
+    }
+
+    private function findExistingTransfer(string $idempotencyKey): ?Transfer
     {
-        return Transfer::query()
-            ->where('user_id', $userId)
-            ->where('idempotency_key', $idempotencyKey)
+        $keyRecord = IdempotencyKey::query()
+            ->where('key', $idempotencyKey)
             ->first();
+
+        return $keyRecord?->transfer;
     }
 
-    /**
-     * @return array<int, Lock>
-     */
-    private function acquireWalletLocks(int $firstWalletId, int $secondWalletId): array
+    private function findActiveUser(int $userId): ?User
     {
-        $walletIds = [$firstWalletId, $secondWalletId];
-        sort($walletIds);
-
-        $locks = [];
-
-        foreach ($walletIds as $walletId) {
-            try {
-                $lock = Cache::lock("wallet:{$walletId}", self::LOCK_TTL_SECONDS);
-                $lock->block(self::LOCK_TIMEOUT_SECONDS);
-                $locks[] = $lock;
-            } catch (LockTimeoutException $exception) {
-                $this->releaseLocks($locks);
-
-                throw $exception;
-            } catch (\Throwable $exception) {
-                Log::warning('Cache lock unavailable for wallet transfer; proceeding without lock.', [
-                    'wallet_id' => $walletId,
-                    'exception' => $exception->getMessage(),
-                ]);
-
-                break;
-            }
-        }
-
-        return $locks;
-    }
-
-    /**
-     * @param array<int, Lock> $locks
-     */
-    private function releaseLocks(array $locks): void
-    {
-        foreach ($locks as $lock) {
-            try {
-                $lock->release();
-            } catch (\Throwable $exception) {
-                Log::warning('Failed to release wallet lock.', [
-                    'exception' => $exception->getMessage(),
-                ]);
-            }
+        try {
+            return User::query()
+                ->whereNull('deleted_at')
+                ->with('wallet')
+                ->findOrFail($userId);
+        } catch (ModelNotFoundException) {
+            return null;
         }
     }
 
     private function runInTransaction(
-        int $userId,
-        int $payerWalletId,
-        int $payeeWalletId,
+        User $payer,
+        User $payee,
+        Wallet $payerWallet,
+        Wallet $payeeWallet,
         int $amountCents,
         string $idempotencyKey,
     ): Transfer {
         return DB::transaction(function () use (
-            $userId,
-            $payerWalletId,
-            $payeeWalletId,
+            $payer,
+            $payee,
+            $payerWallet,
+            $payeeWallet,
             $amountCents,
             $idempotencyKey,
         ): Transfer {
-            $payerWallet = Wallet::lockForUpdate()->find($payerWalletId);
-            $payeeWallet = Wallet::lockForUpdate()->find($payeeWalletId);
+            $firstWalletId = min($payerWallet->id, $payeeWallet->id);
+            $secondWalletId = max($payerWallet->id, $payeeWallet->id);
 
-            if (is_null($payerWallet)) {
-                return $this->createFailedTransfer(
-                    $userId,
-                    $payerWalletId,
-                    $payeeWalletId,
-                    $amountCents,
-                    $idempotencyKey,
-                    FailureReason::PayerNotFound,
-                );
+            $lockedFirst = Wallet::lockForUpdate()->find($firstWalletId);
+            $lockedSecond = Wallet::lockForUpdate()->find($secondWalletId);
+
+            if (is_null($lockedFirst) || is_null($lockedSecond)) {
+                throw new RuntimeException('Wallet disappeared during transfer.');
             }
 
-            if (is_null($payeeWallet)) {
-                return $this->createFailedTransfer(
-                    $userId,
-                    $payerWalletId,
-                    $payeeWalletId,
-                    $amountCents,
-                    $idempotencyKey,
-                    FailureReason::PayeeNotFound,
-                );
-            }
+            $lockedPayerWallet = $lockedFirst->id === $payerWallet->id ? $lockedFirst : $lockedSecond;
+            $lockedPayeeWallet = $lockedFirst->id === $payeeWallet->id ? $lockedFirst : $lockedSecond;
 
-            if ($payerWallet->currency->value !== $payeeWallet->currency->value) {
-                return $this->createFailedTransfer(
-                    $userId,
-                    $payerWalletId,
-                    $payeeWalletId,
-                    $amountCents,
-                    $idempotencyKey,
-                    FailureReason::CurrencyMismatch,
-                );
-            }
-
-            $payerBalance = (int) $payerWallet->getRawOriginal('balance_cents');
+            $payerBalance = (int) $lockedPayerWallet->getRawOriginal('balance_cents');
 
             if ($payerBalance < $amountCents) {
-                return $this->createFailedTransfer(
-                    $userId,
-                    $payerWalletId,
-                    $payeeWalletId,
+                $transfer = $this->createFailedTransfer(
+                    $payer->id,
+                    $payee->id,
                     $amountCents,
                     $idempotencyKey,
                     FailureReason::InsufficientFunds,
                 );
+
+                $this->upsertIdempotencyKey($idempotencyKey, $transfer);
+
+                return $transfer;
             }
 
-            $payerWallet->balance_cents = $payerBalance - $amountCents;
-            $payerWallet->save();
+            $lockedPayerWallet->balance_cents = $payerBalance - $amountCents;
+            $lockedPayerWallet->save();
 
-            $payeeBalance = (int) $payeeWallet->getRawOriginal('balance_cents');
-            $payeeWallet->balance_cents = $payeeBalance + $amountCents;
-            $payeeWallet->save();
+            $payeeBalance = (int) $lockedPayeeWallet->getRawOriginal('balance_cents');
+            $lockedPayeeWallet->balance_cents = $payeeBalance + $amountCents;
+            $lockedPayeeWallet->save();
 
-            return Transfer::create([
-                'user_id' => $userId,
-                'payer_wallet_id' => $payerWalletId,
-                'payee_wallet_id' => $payeeWalletId,
+            $transfer = Transfer::create([
+                'payer_id' => $payer->id,
+                'payee_id' => $payee->id,
                 'amount_cents' => $amountCents,
                 'currency' => $payerWallet->currency->value,
                 'idempotency_key' => $idempotencyKey,
                 'status' => TransferStatus::Completed,
             ]);
+
+            $this->upsertIdempotencyKey($idempotencyKey, $transfer);
+
+            $this->dispatchNotification($transfer);
+
+            return $transfer;
         });
     }
 
-    private function createFailedTransfer(
-        int $userId,
-        int $payerWalletId,
-        int $payeeWalletId,
-        int $amountCents,
-        string $idempotencyKey,
-        FailureReason $reason,
-    ): Transfer {
+    private function dispatchNotification(Transfer $transfer): void
+    {
         try {
-            return Transfer::create([
-                'user_id' => $userId,
-                'payer_wallet_id' => $payerWalletId,
-                'payee_wallet_id' => $payeeWalletId,
-                'amount_cents' => $amountCents,
-                'currency' => CurrencyType::BRA->value,
-                'idempotency_key' => $idempotencyKey,
-                'status' => TransferStatus::Failed,
-                'failure_reason' => $reason,
+            $this->dispatcher->dispatch(
+                new \App\Jobs\SendTransferNotificationJob($transfer->id),
+            );
+        } catch (\Throwable $exception) {
+            $this->logger->warning('Queue dispatch unavailable; notification skipped.', [
+                'transfer_id' => $transfer->id,
+                'exception' => $exception->getMessage(),
             ]);
-        } catch (QueryException $exception) {
-            $existing = $this->findExistingTransfer($userId, $idempotencyKey);
-
-            if (!is_null($existing)) {
-                return $existing;
-            }
-
-            throw $exception;
         }
     }
 
-    private function isUniqueConstraintViolation(QueryException $exception): bool
+    private function upsertIdempotencyKey(string $idempotencyKey, Transfer $transfer): void
     {
-        if ($exception->getCode() !== '23000') {
-            return false;
+        IdempotencyKey::updateOrCreate(
+            ['key' => $idempotencyKey],
+            ['transfer_id' => $transfer->id],
+        );
+    }
+
+    private function createFailedTransfer(
+        int $payerId,
+        int $payeeId,
+        int $amountCents,
+        ?string $idempotencyKey,
+        FailureReason $reason,
+    ): Transfer {
+        $transfer = Transfer::create([
+            'payer_id' => $payerId,
+            'payee_id' => $payeeId,
+            'amount_cents' => $amountCents,
+            'currency' => CurrencyType::BRA->value,
+            'idempotency_key' => $idempotencyKey,
+            'status' => TransferStatus::Failed,
+            'failure_reason' => $reason,
+        ]);
+
+        if (!empty($idempotencyKey)) {
+            try {
+                $this->upsertIdempotencyKey($idempotencyKey, $transfer);
+            } catch (\Throwable $exception) {
+                $this->logger->warning('Failed to record idempotency key for failed transfer.', [
+                    'transfer_id' => $transfer->id,
+                    'idempotency_key' => $idempotencyKey,
+                    'exception' => $exception->getMessage(),
+                ]);
+            }
         }
 
-        $previous = $exception->getPrevious();
-
-        return $previous instanceof PDOException && $previous->getCode() === '23000';
+        return $transfer;
     }
 }

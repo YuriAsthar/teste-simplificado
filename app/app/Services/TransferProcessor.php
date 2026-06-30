@@ -44,6 +44,8 @@ class TransferProcessor
         $payeeId = (int) ($payload['payee_id'] ?? 0);
         $amountCents = (int) ($payload['amount_cents'] ?? 0);
 
+        $numericTransferId = is_numeric($transferId) ? (int) $transferId : 0;
+
         if ($this->context->isEnabled()) {
             $this->context->record('rabbitmq.dispatch', [
                 'payer_id' => $payerId,
@@ -59,7 +61,7 @@ class TransferProcessor
         }
 
         $this->dispatcher->dispatch(
-            new SendNotificationJob($payerId, $payeeId, $amountCents, $transferId)
+            new SendNotificationJob($numericTransferId)
         )->onConnection('rabbitmq');
 
         $this->markProcessed($transferId);

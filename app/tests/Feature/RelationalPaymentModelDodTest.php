@@ -84,6 +84,7 @@ final class RelationalPaymentModelDodTest extends TestCase
 
     public function test_transfer_status_invalid_transition_throws_exception(): void
     {
+        /** @var Transfer $transfer */
         $transfer = Transfer::factory()->create([
             'status' => TransferStatus::Completed,
         ]);
@@ -111,6 +112,7 @@ final class RelationalPaymentModelDodTest extends TestCase
     #[DataProvider('validStatusTransitionsProvider')]
     public function test_valid_status_transitions_succeed(TransferStatus $from, TransferStatus $to): void
     {
+        /** @var Transfer $transfer */
         $transfer = Transfer::factory()->create([
             'status' => $from,
         ]);

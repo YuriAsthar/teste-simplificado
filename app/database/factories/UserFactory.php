@@ -6,7 +6,7 @@ use App\Enums\DocumentType;
 use App\Enums\UserType;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Facades\Hash;
+
 
 /**
  * @extends Factory<User>
@@ -28,7 +28,7 @@ class UserFactory extends Factory
         return [
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
-            'password' => static::$password ??= Hash::make('password'),
+            'password' => 'password',
             'type' => UserType::Common->value,
             'document_country' => 'BRA',
             'document_type' => DocumentType::Cpf->value,

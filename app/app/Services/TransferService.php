@@ -61,8 +61,9 @@ final readonly class TransferService
         $message = $this->messageBuilder->build($payload);
         $this->publisher->publish($message['topic'], $message['envelope'], $message['key']);
 
+        $numericTransferId = (int) $transferId;
         $this->dispatcher->dispatch(
-            new SendNotificationJob($payerId, $payeeId, $amountCents, $transferId)
+            new SendNotificationJob($numericTransferId)
         )->onConnection('rabbitmq');
 
         $this->invalidateUserCache($payerId);

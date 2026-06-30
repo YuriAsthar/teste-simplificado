@@ -13,6 +13,10 @@ enum FailureReason: string
     case CurrencyMismatch = 'currency_mismatch';
     case WalletLocked = 'wallet_locked';
     case IdempotencyConflict = 'idempotency_conflict';
+    case SamePayerAndPayee = 'same_payer_and_payee';
+    case PayerIsMerchant = 'payer_is_merchant';
+    case WalletInactive = 'wallet_inactive';
+    case AuthorizerRejected = 'authorizer_rejected';
     case Unknown = 'unknown';
 
     public function description(): string
@@ -25,6 +29,10 @@ enum FailureReason: string
             self::CurrencyMismatch => 'As carteiras possuem moedas diferentes.',
             self::WalletLocked => 'A carteira está temporariamente bloqueada.',
             self::IdempotencyConflict => 'Conflito de idempotência detectado.',
+            self::SamePayerAndPayee => 'Pagador e beneficiário devem ser diferentes.',
+            self::PayerIsMerchant => 'Lojistas não podem realizar transferências.',
+            self::WalletInactive => 'A carteira informada está inativa.',
+            self::AuthorizerRejected => 'Transferência não autorizada pelo serviço externo.',
             self::Unknown => 'Falha desconhecida.',
         };
     }

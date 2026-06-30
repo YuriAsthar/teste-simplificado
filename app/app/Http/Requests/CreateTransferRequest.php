@@ -6,7 +6,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class CreateTransferRequest extends FormRequest
+final class CreateTransferRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -14,17 +14,32 @@ class CreateTransferRequest extends FormRequest
     }
 
     /**
-     * Get the validation rules that apply to the request.
-     *
      * @return array<string, array<int, string>|string>
      */
     public function rules(): array
     {
         return [
-            'payer_wallet_id' => ['required', 'integer', 'exists:wallets,id'],
-            'payee_wallet_id' => ['required', 'integer', 'exists:wallets,id', 'different:payer_wallet_id'],
-            'amount_cents' => ['required', 'integer', 'min:1'],
-            'idempotency_key' => ['required', 'string', 'max:255'],
+            'payer' => ['required', 'integer', 'exists:users,id'],
+            'payee' => ['required', 'integer', 'exists:users,id', 'different:payer'],
+            'value' => ['required', 'numeric', 'min:0.01'],
         ];
+    }
+
+    public function amountCents(): int
+    {
+        $value = (string) $this->validated('value');
+
+        if (function_exists('bcmul')) {
+            return (int) bcadd(bcmul($value, '100', 4), '0', 0);
+        }
+
+        return (int) round((float) $value * 100);
+    }
+
+    public function idempotencyKey(): ?string
+    {
+        $header = $this->header('Idempotency-Key');
+
+        return is_string($header) && $header !== '' ? $header : null;
     }
 }

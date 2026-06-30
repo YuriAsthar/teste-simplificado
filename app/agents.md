@@ -6,20 +6,23 @@ Laravel 13 sandbox application implementing a relational wallet/transfer payment
 ## Structure
 | File/Folder | Purpose | Type |
 |-------------|---------|------|
-| `app/Enums/` | Backed enums: CurrencyType, UserType, DocumentType, TransferStatus, FailureReason | PHP |
-| `app/Casts/MoneyCast.php` | Integer-cents money caster | PHP |
-| `app/Models/User.php` | User with soft deletes, document triple and wallet relation | PHP |
-| `app/Models/Wallet.php` | Wallet balance/currency with soft deletes | PHP |
-| `app/Models/Transfer.php` | Transfer lifecycle and status transitions | PHP |
-| `app/Services/WalletTransferService.php` | Wallet transfer executor (locks + transaction) | PHP |
-| `app/Http/Controllers/Api/V1/TransferController.php` | Transfer endpoint | PHP |
-| `app/Http/Requests/CreateTransferRequest.php` | Transfer validation rules | PHP |
-| `app/Events/UserCreated.php` | Domain event fired on user creation | PHP |
-| `app/Listeners/CreateUserWallet.php` | Creates default BRA wallet for new users | PHP |
-| `app/Providers/EventServiceProvider.php` | Event/listener registration | PHP |
-| `database/migrations/` | Users, wallets and transfers migrations | PHP |
-| `database/factories/` | Model factories | PHP |
-| `routes/api.php` | API routes | PHP |
+| `app/Casts/` | Custom Eloquent casts (e.g. MoneyCast). | PHP |
+| `app/Console/Commands/` | Artisan operational commands. | PHP |
+| `app/Enums/` | Backed enums: CurrencyType, UserType, DocumentType, TransferStatus, FailureReason. | PHP |
+| `app/Events/` | Domain events (UserCreated). | PHP |
+| `app/Http/Controllers/Api/V1/` | API controllers: TokenController, TransferController. | PHP |
+| `app/Http/Requests/` | FormRequest validation classes. | PHP |
+| `app/Jobs/` | Queueable notification jobs. | PHP |
+| `app/Listeners/` | Event listeners (CreateUserWallet). | PHP |
+| `app/Models/` | Eloquent models: User, Wallet, Transfer, IdempotencyKey. | PHP |
+| `app/Providers/` | Service providers. | PHP |
+| `app/Services/` | Business-logic services including AuthorizerClient, NotificationClient, WalletTransferService, and legacy Kafka/RabbitMQ messaging services. | PHP |
+| `bootstrap/app.php` | Application bootstrap. | PHP |
+| `config/` | Configuration files including services.php and sanctum.php. | PHP |
+| `database/factories/` | Model factories. | PHP |
+| `database/migrations/` | Database migrations. | PHP |
+| `routes/api.php` | API routes. | PHP |
+| `tests/` | PHPUnit unit and feature tests. | Directory |
 
 ## Conventions
 - All money stored as `bigint` cents; use `MoneyCast` for display decimal.
@@ -27,6 +30,8 @@ Laravel 13 sandbox application implementing a relational wallet/transfer payment
 - Validation uses `FormRequest` classes.
 - Use backed enums for domain values.
 - Prefer constructor injection and typed signatures.
+- External HTTP clients (AuthorizerClient, NotificationClient) use `Http::timeout()` and do not throw on 4xx/5xx.
+- AuthorizerClient retries only on `ConnectionException` with a single exponential backoff.
 
 ## Commands
 ```bash
@@ -37,7 +42,7 @@ docker compose run --rm app php artisan migrate
 docker compose run --rm app composer lint
 docker compose run --rm app composer stan
 docker compose run --rm app composer phpmd
-docker compose run --rm app vendor/bin/phpunit
+docker compose run --rm app composer test
 ```
 
 ## Related

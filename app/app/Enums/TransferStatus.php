@@ -22,4 +22,9 @@ enum TransferStatus: string
             default => false,
         };
     }
+
+    public function isFailed(): bool
+    {
+        return $this === self::Failed;
+    }
 }

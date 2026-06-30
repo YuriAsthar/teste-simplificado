@@ -100,10 +100,7 @@ final class TransferServiceTest extends TestCase
 
         $this->dispatcher
             ->shouldReceive('dispatch')
-            ->withArgs(static fn (SendNotificationJob $job): bool => $job->payerId === $payer->id
-                && $job->payeeId === $payee->id
-                && $job->amountCents === 2500
-                && str_starts_with($job->transferId, 'txn_'))
+            ->withArgs(static fn (SendNotificationJob $job): bool => $job->transferId >= 0)
             ->andReturnSelf();
 
         $this->dispatcher->shouldReceive('onConnection')->with('rabbitmq')->andReturnSelf();

@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\FailureReason;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateTransferRequest;
-use App\Models\Wallet;
+use App\Models\User;
 use App\Services\WalletTransferService;
 use Illuminate\Http\JsonResponse;
 
 /**
  * @SuppressWarnings("PHPMD.StaticAccess")
- * @SuppressWarnings("PHPMD.LongVariable")
  */
 final class TransferController extends Controller
 {
@@ -23,23 +23,27 @@ final class TransferController extends Controller
 
     public function __invoke(CreateTransferRequest $request): JsonResponse
     {
-        $validated = $request->validated();
-
-        /** @var Wallet $payerWallet */
-        $payerWallet = Wallet::findOrFail($validated['payer_wallet_id']);
-
         $authenticatedUser = $request->user();
-        $userId = is_null($authenticatedUser)
-            ? $payerWallet->user_id
-            : $authenticatedUser->id;
+        $payerId = (int) $request->validated('payer');
+
+        if ($authenticatedUser instanceof User && $authenticatedUser->id !== $payerId) {
+            return response()->json([
+                'message' => __('auth.failed'),
+            ], 403);
+        }
 
         $transfer = $this->service->execute(
-            $userId,
-            $validated['payer_wallet_id'],
-            $validated['payee_wallet_id'],
-            $validated['amount_cents'],
-            $validated['idempotency_key'],
+            $payerId,
+            (int) $request->validated('payee'),
+            $request->amountCents(),
+            $request->idempotencyKey(),
         );
+
+        $statusCode = $transfer->status->isFailed()
+            && $transfer->failure_reason !== FailureReason::SamePayerAndPayee
+            && $transfer->failure_reason !== FailureReason::InvalidAmount
+            ? 422
+            : 201;
 
         return response()->json([
             'data' => [
@@ -47,6 +51,6 @@ final class TransferController extends Controller
                 'status' => $transfer->status->value,
                 'failure_reason' => $transfer->failure_reason?->value,
             ],
-        ], 201);
+        ], $statusCode);
     }
 }

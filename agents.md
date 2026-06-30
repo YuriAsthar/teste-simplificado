@@ -19,6 +19,7 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 | `/app/phpstan-baseline.neon` | PHPStan baseline rules | Config |
 | `/app/rector.php` | Rector refactoring configuration | Config |
 | `/app/phpmd.xml` | PHPMD ruleset and exclusions | Config |
+| `/app/agents.md` | Laravel application documentation | Doc |
 
 ## Services
 - **app**: PHP 8.4-FPM with Laravel 13
@@ -60,4 +61,5 @@ docker compose run --rm app composer phpmd
 ```
 
 ## Related
+- Child: /app/agents.md
 - Parent: ../agents.md

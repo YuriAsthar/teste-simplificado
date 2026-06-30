@@ -5,33 +5,48 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Services\TransferService;
+use App\Http\Requests\CreateTransferRequest;
+use App\Models\Wallet;
+use App\Services\WalletTransferService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
+/**
+ * @SuppressWarnings("PHPMD.StaticAccess")
+ * @SuppressWarnings("PHPMD.LongVariable")
+ */
 final class TransferController extends Controller
 {
     public function __construct(
-        private readonly TransferService $transferService,
+        private readonly WalletTransferService $service,
     ) {
     }
 
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(CreateTransferRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'payer_id' => ['required', 'integer', 'exists:users,id'],
-            'payee_id' => ['required', 'integer', 'exists:users,id'],
-            'amount_cents' => ['required', 'integer', 'min:1'],
-        ]);
+        $validated = $request->validated();
 
-        $result = $this->transferService->authorizeAndExecuteTransfer(
-            $validated['payer_id'],
-            $validated['payee_id'],
+        /** @var Wallet $payerWallet */
+        $payerWallet = Wallet::findOrFail($validated['payer_wallet_id']);
+
+        $authenticatedUser = $request->user();
+        $userId = !is_null($authenticatedUser)
+            ? $authenticatedUser->id
+            : $payerWallet->user_id;
+
+        $transfer = $this->service->execute(
+            $userId,
+            $validated['payer_wallet_id'],
+            $validated['payee_wallet_id'],
             $validated['amount_cents'],
+            $validated['idempotency_key'],
         );
 
         return response()->json([
-            'data' => $result,
+            'data' => [
+                'id' => $transfer->id,
+                'status' => $transfer->status->value,
+                'failure_reason' => $transfer->failure_reason?->value,
+            ],
         ], 201);
     }
 }

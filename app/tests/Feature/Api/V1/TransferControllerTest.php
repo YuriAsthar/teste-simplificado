@@ -4,94 +4,117 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Api\V1;
 
-use App\Contracts\TransferPublisherInterface;
-use App\Jobs\SendNotificationJob;
+use App\Enums\CurrencyType;
+use App\Enums\FailureReason;
+use App\Enums\TransferStatus;
 use App\Models\User;
-use App\Services\TransferService;
-use Illuminate\Contracts\Bus\Dispatcher;
-use Illuminate\Contracts\Cache\Repository;
+use App\Models\Wallet;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
-use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 final class TransferControllerTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        $this->instance(TransferPublisherInterface::class, $this->mock(TransferPublisherInterface::class));
-        $this->instance(Dispatcher::class, $this->mock(Dispatcher::class));
-
-        /** @var Repository $cache */
-        $cache = $this->mock(Repository::class);
-        $cache->shouldReceive('remember')
-            ->andReturnUsing(static fn (string $key, int $ttl, callable $callback): mixed => $callback());
-        $this->instance(Repository::class, $cache);
-    }
-
-    public function test_it_authorizes_transfer_and_dispatches_notification(): void
+    public function test_it_executes_transfer_between_wallets(): void
     {
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $publisher = $this->app->make(TransferPublisherInterface::class);
-        $publisher->shouldReceive('publish')
-            ->withArgs(static fn (string $topic, array $envelope, ?string $key): bool => $topic === 'wallet.transfer.completed'
-                && is_string($key)
-                && str_starts_with($key, 'txn_')
-                && isset($envelope['meta'], $envelope['payload'])
-                && $envelope['meta']['event'] === 'transfer.authorized'
-                && $envelope['meta']['version'] === '1.0'
-                && is_string($envelope['meta']['occurred_at'])
-                && str_starts_with($envelope['payload']['transfer_id'], 'txn_')
-                && $envelope['payload']['payer_id'] === $payer->id
-                && $envelope['payload']['payee_id'] === $payee->id
-                && $envelope['payload']['amount_cents'] === 1000);
-
-        $dispatcher = $this->app->make(Dispatcher::class);
-        $dispatcher->shouldReceive('dispatch')
-            ->withArgs(static fn (SendNotificationJob $job): bool =>
-                $job->payerId === $payer->id
-                && $job->payeeId === $payee->id
-                && $job->amountCents === 1000
-                && str_starts_with($job->transferId, 'txn_'))
-            ->andReturnSelf();
-        $dispatcher->shouldReceive('onConnection')->with('rabbitmq')->andReturnSelf();
-
-        $cache = $this->app->make(Repository::class);
-        $cache->shouldReceive('forget')->twice();
+        $payer->wallet->update(['balance_cents' => 10000]);
 
         $response = $this->postJson('/api/v1/transfers', [
-            'payer_id' => $payer->id,
-            'payee_id' => $payee->id,
-            'amount_cents' => 1000,
+            'payer_wallet_id' => $payer->wallet->id,
+            'payee_wallet_id' => $payee->wallet->id,
+            'amount_cents' => 2500,
+            'idempotency_key' => 'transfer-1',
         ]);
 
         $response->assertStatus(201)
-            ->assertJsonPath('data.status', 'authorized')
-            ->assertJsonStructure([
-                'data' => [
-                    'transfer_id',
-                    'status',
-                ],
-            ]);
+            ->assertJsonPath('data.status', TransferStatus::Completed->value)
+            ->assertJsonPath('data.failure_reason', null);
+
+        $this->assertSame(7500, (int) $payer->fresh()->wallet->getRawOriginal('balance_cents'));
+        $this->assertSame(2500, (int) $payee->fresh()->wallet->getRawOriginal('balance_cents'));
     }
 
-    public function test_it_returns_validation_error_when_payer_does_not_exist(): void
+    public function test_duplicate_idempotency_key_returns_existing_transfer(): void
+    {
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        $payer->wallet->update(['balance_cents' => 10000]);
+
+        $payload = [
+            'payer_wallet_id' => $payer->wallet->id,
+            'payee_wallet_id' => $payee->wallet->id,
+            'amount_cents' => 1000,
+            'idempotency_key' => 'duplicate-key',
+        ];
+
+        $first = $this->postJson('/api/v1/transfers', $payload);
+        $second = $this->postJson('/api/v1/transfers', $payload);
+
+        $first->assertStatus(201);
+        $second->assertStatus(201);
+        $this->assertSame(
+            $first->json('data.id'),
+            $second->json('data.id'),
+        );
+    }
+
+    public function test_it_returns_failed_transfer_when_payer_has_insufficient_funds(): void
+    {
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        $payer->wallet->update(['balance_cents' => 100]);
+
+        $response = $this->postJson('/api/v1/transfers', [
+            'payer_wallet_id' => $payer->wallet->id,
+            'payee_wallet_id' => $payee->wallet->id,
+            'amount_cents' => 500,
+            'idempotency_key' => 'insufficient-funds',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.status', TransferStatus::Failed->value)
+            ->assertJsonPath('data.failure_reason', FailureReason::InsufficientFunds->value);
+    }
+
+    public function test_it_returns_failed_transfer_when_currencies_mismatch(): void
+    {
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        $payer->wallet->update(['balance_cents' => 10000]);
+        $payee->wallet->update(['currency' => CurrencyType::USD->value]);
+
+        $response = $this->postJson('/api/v1/transfers', [
+            'payer_wallet_id' => $payer->wallet->id,
+            'payee_wallet_id' => $payee->wallet->id,
+            'amount_cents' => 1000,
+            'idempotency_key' => 'currency-mismatch',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.status', TransferStatus::Failed->value)
+            ->assertJsonPath('data.failure_reason', FailureReason::CurrencyMismatch->value);
+    }
+
+    public function test_it_returns_validation_error_when_payer_wallet_does_not_exist(): void
     {
         $payee = User::factory()->create();
 
         $response = $this->postJson('/api/v1/transfers', [
-            'payer_id' => 99999,
-            'payee_id' => $payee->id,
+            'payer_wallet_id' => 99999,
+            'payee_wallet_id' => $payee->wallet->id,
             'amount_cents' => 1000,
+            'idempotency_key' => 'missing-payer',
         ]);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['payer_id']);
+            ->assertJsonValidationErrors(['payer_wallet_id']);
     }
 
     public function test_it_returns_validation_error_when_amount_is_invalid(): void
@@ -100,13 +123,29 @@ final class TransferControllerTest extends TestCase
         $payee = User::factory()->create();
 
         $response = $this->postJson('/api/v1/transfers', [
-            'payer_id' => $payer->id,
-            'payee_id' => $payee->id,
+            'payer_wallet_id' => $payer->wallet->id,
+            'payee_wallet_id' => $payee->wallet->id,
             'amount_cents' => 0,
+            'idempotency_key' => 'invalid-amount',
         ]);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['amount_cents']);
+    }
+
+    public function test_it_returns_validation_error_when_wallets_are_the_same(): void
+    {
+        $payer = User::factory()->create();
+
+        $response = $this->postJson('/api/v1/transfers', [
+            'payer_wallet_id' => $payer->wallet->id,
+            'payee_wallet_id' => $payer->wallet->id,
+            'amount_cents' => 1000,
+            'idempotency_key' => 'same-wallet',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['payee_wallet_id']);
     }
 
     public function test_it_returns_validation_error_for_missing_fields(): void
@@ -114,6 +153,11 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfers', []);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['payer_id', 'payee_id', 'amount_cents']);
+            ->assertJsonValidationErrors([
+                'payer_wallet_id',
+                'payee_wallet_id',
+                'amount_cents',
+                'idempotency_key',
+            ]);
     }
 }

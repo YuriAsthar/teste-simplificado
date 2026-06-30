@@ -4,7 +4,7 @@
 Value-object and primitive transformers for Eloquent models.
 
 ## Files
-- `MoneyCast.php` — Converts integer-cents storage (`bigint`) to decimal string representation and back. Supports `bcmath` for precision and falls back to float rounding only when the extension is unavailable.
+- `MoneyCast.php` — strict `int`-in / `int`-out cast; rejects null, float, string, bool, array, object.
 
 ## Conventions
 - Casts live in `app/Casts/` and implement `Illuminate\Contracts\Database\Eloquent\CastsAttributes`.

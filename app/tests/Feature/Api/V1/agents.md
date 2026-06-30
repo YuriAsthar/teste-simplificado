@@ -4,7 +4,8 @@
 End-to-end tests for version 1 API endpoints.
 
 ## Files
-- `TransferControllerTest.php` — Covers successful transfers, idempotency, insufficient funds, currency mismatch, validation errors for missing/invalid/same wallets.
+- `TransferControllerTest.php` — Covers successful transfers, idempotency, insufficient funds, currency mismatch, validation errors for missing/invalid/same payer and payee.
+- `TokenControllerTest.php` — Tests token issuance endpoint.
 
 ## Conventions
 - Feature tests use `LazilyRefreshDatabase`.

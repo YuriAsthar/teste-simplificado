@@ -6,6 +6,8 @@ PHPUnit unit tests for isolated, fast components: services, jobs, and domain hel
 ## Structure
 | File/Folder | Purpose | Type |
 |-------------|---------|------|
+| `Support/MoneyParserTest.php` | Tests decimal-string → integer-cents parsing, including edge cases and rejection of invalid formats. | PHP |
+| `Casts/MoneyCastTest.php` | Tests `MoneyCast` strict int-in/int-out behavior and rejection of null, float, string, etc. | PHP |
 | `Jobs/SendNotificationJobTest.php` | Tests the legacy notification job marks transfers as notified on success/failure. | PHP |
 | `Jobs/SendTransferNotificationJobTest.php` | Tests the relational-flow notification job. | PHP |
 | `Services/AuthorizerClientTest.php` | Tests the external authorizer HTTP client: 2xx success, 4xx/5xx false, retry on connection exception only. | PHP |

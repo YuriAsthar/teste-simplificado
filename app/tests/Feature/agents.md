@@ -11,7 +11,7 @@ PHPUnit feature tests covering end-to-end HTTP flows, console commands, and mode
 | `Console/RetryNotificationsCommandTest.php` | Tests the `notifications:retry` command dispatches pending jobs. | PHP |
 | `RelationalPaymentModelDodTest.php` | Model-level data-integrity tests for users, wallets, transfers, money cast, and status transitions. | PHP |
 | `Kafka/*.php` | Kafka integration tests (skipped when broker unavailable). | PHP |
-| `Console/*.php` | Console command tests for Kafka/RabbitMQ consumers and producers. | PHP |
+| `Console/*.php` | Console command tests: `RetryNotificationsCommandTest.php`, `ConsumeTransfersCommandTest.php`, `ConsumeRetryTransfersCommandTest.php`, `KafkaProduceTransferCommandTest.php`. | PHP |
 
 ## Conventions
 - Feature tests use `LazilyRefreshDatabase` for DB state.

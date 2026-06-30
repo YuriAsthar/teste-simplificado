@@ -16,7 +16,8 @@ Laravel 13 sandbox application implementing a relational wallet/transfer payment
 | `app/Listeners/` | Event listeners (CreateUserWallet). | PHP |
 | `app/Models/` | Eloquent models: User, Wallet, Transfer, IdempotencyKey. | PHP |
 | `app/Providers/` | Service providers. | PHP |
-| `app/Services/` | Business-logic services including AuthorizerClient, NotificationClient, WalletTransferService, and legacy Kafka/RabbitMQ messaging services. | PHP |
+| `app/Services/` | Business-logic services including AuthorizerClient, NotificationClient, LoginService, WalletTransferService, and legacy Kafka/RabbitMQ messaging services. | PHP |
+| `app/Support/` | Domain helpers (e.g. MoneyParser). | PHP |
 | `bootstrap/app.php` | Application bootstrap. | PHP |
 | `config/` | Configuration files including services.php and sanctum.php. | PHP |
 | `database/factories/` | Model factories. | PHP |
@@ -25,7 +26,8 @@ Laravel 13 sandbox application implementing a relational wallet/transfer payment
 | `tests/` | PHPUnit unit and feature tests. | Directory |
 
 ## Conventions
-- All money stored as `bigint` cents; use `MoneyCast` for display decimal.
+- All money stored as `bigint` cents; never use float for money.
+- API money input is accepted as decimal strings and converted to integer cents via `App\Support\MoneyParser::parseToCents()`. `MoneyCast` is strict `int`/`int`; assignments must be integer cents.
 - Business logic lives in service classes; controllers are thin.
 - Validation uses `FormRequest` classes.
 - Use backed enums for domain values.

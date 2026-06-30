@@ -7,12 +7,13 @@ Test suite for the Laravel application: unit tests for isolated components and f
 | File/Folder | Purpose | Type |
 |-------------|---------|------|
 | `Feature/` | End-to-end HTTP, console, and integration tests. | Directory |
-| `Unit/` | Isolated unit tests for services, jobs, and helpers. | Directory |
+| `Unit/` | Isolated unit tests for services, jobs, casts, and helpers. | Directory |
 | `TestCase.php` | Base test case shared across the suite. | PHP |
 
 ## Conventions
 - Feature tests use `LazilyRefreshDatabase`.
 - Unit tests use Mockery and clean up in `tearDown()`.
+- `tests/Unit/Support/` contains `MoneyParserTest.php`.
 - External HTTP calls are faked with `Http::fake()`.
 - PHPStan baseline contains intentional ignores for Mockery mock assignments in tests.
 

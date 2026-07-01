@@ -1,111 +1,84 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Wallet API
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="300" alt="Laravel Logo">
 </p>
 
-## About Laravel
+Laravel 13 API-only wallet/transfer application. It exposes a JSON API for authentication and money transfers on top of PostgreSQL, Redis, RabbitMQ and Kafka infrastructure.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## API surface
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/auth/token` | Issue a Sanctum bearer token from email/password. |
+| POST | `/api/v1/transfer` | Execute a wallet-to-wallet transfer (authenticated). |
+| GET | `/` | JSON health check. |
+| GET | `/up` | Laravel health check endpoint. |
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+All endpoints return JSON. Authentication is stateless: send `Authorization: Bearer <token>` for protected routes.
 
-## Learning Laravel
+## Project approach
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **API-only**: no Blade views, no web login/dashboard, no session/cookie authentication for API consumption.
+- **Bearer tokens**: `laravel/sanctum` issues personal access tokens via `POST /api/v1/auth/token`.
+- **Business logic in services**: controllers are thin and delegate to `LoginService` and `WalletTransferService`.
+- **Money as integer cents**: API values are decimal strings; they are parsed to integer cents before persistence.
+- **Asynchronous notifications**: transfer completion dispatches `SendTransferNotificationJob` via RabbitMQ. External notification calls use `util.devi.tools/api/v1/notify`.
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Local setup
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+1. Copy root `.env.example` to `.env` (configures `NGINX_HOST_PORT`, default `8080`).
+2. Copy `app/.env.example` to `app/.env` and generate an app key:
+   ```bash
+   docker compose run --rm app php artisan key:generate
+   ```
+3. Start the stack:
+   ```bash
+   docker compose up -d --build
+   ```
+4. Fix volume ownership:
+   ```bash
+   docker compose run --rm --user root app chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+   ```
+5. Run migrations:
+   ```bash
+   docker compose run --rm app php artisan migrate --force
+   ```
 
-## Agentic Development
+## Development commands
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
-```
-
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## Code Quality
-
-This project uses a set of static analysis and linting tools to keep the code healthy.
-
-### Environment distinction
-
-- **Local development:** quality tools run inside the `app` Docker container. From the project root, run:
-  ```bash
-  docker compose run --rm app composer <script>
-  ```
-- **CI (GitHub Actions):** quality tools run natively on the runner using `shivammathur/setup-php` and `ramsey/composer-install`, calling the same `composer <script>` commands. This is the standard approach for Laravel projects.
-
-### Available scripts
-
-| Script | Command | Purpose |
-|--------|---------|---------|
-| `lint` | `composer lint` | EasyCodingStandard lint check |
-| `stan` | `composer stan` | PHPStan static analysis |
-| `rector` | `composer rector` | Rector code refactoring |
-| `test` | `composer test` | PHPUnit test suite |
-| `phpmd` | `composer phpmd` | PHPMD mess detection |
-
-### PHPMD
-
-[PHPMD](https://phpmd.org/) scans the codebase for common code smells.
-
-**Configuration file:** `phpmd.xml` in the `app/` directory.
-
-**Enabled rule sets:** `cleancode`, `codesize`, `controversial`, `design`, `naming`, `unusedcode`.
-
-**Run inside the `app` container (local development):**
+All commands run through `docker compose run --rm app` (never `docker compose exec`):
 
 ```bash
+# Start development server + queue worker + log tail
+docker compose run --rm app composer dev
+
+# Run migrations
+docker compose run --rm app php artisan migrate
+
+# Run tests
+docker compose run --rm app composer test
+
+# Code quality
+docker compose run --rm app composer lint
+docker compose run --rm app composer lint-fix
+docker compose run --rm app composer stan
+docker compose run --rm app composer rector
 docker compose run --rm app composer phpmd
 ```
 
-**Run locally from the host (CI uses this approach):**
+## CI / GitHub Actions
 
-```bash
-cd app
-composer phpmd
-```
+Quality tools run natively on the GitHub Actions runner using `shivammathur/setup-php` and `ramsey/composer-install`, calling the same `composer <script>` commands. No Node/Vite build is required for this API-only project.
 
-The `composer phpmd` script runs the locally installed `vendor/bin/phpmd` binary:
+## Stack
 
-```bash
-php -d error_reporting=22527 vendor/bin/phpmd app text phpmd.xml
-```
-
-- **Source:** `app` (the Laravel application source directory when run from `app/`).
-- **Config:** `phpmd.xml` (includes the rule sets above).
-
-**CI behavior:** PHPMD runs automatically as a blocking step on every push and pull request via `.github/workflows/ci.yml`.
+- PHP 8.4 + Laravel 13
+- PostgreSQL 16
+- Redis 7
+- RabbitMQ 3 Management
+- Kafka + Zookeeper
+- Nginx reverse proxy
 
 ## License
 

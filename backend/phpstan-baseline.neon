@@ -1,0 +1,133 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertTrue\(\) with true will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/ExampleTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			count: 17
+			path: tests/Unit/Services/KafkaTransferProcessorTest.php
+
+		-
+			message: '#^Call to an undefined method App\\Contracts\\TransferPublisherInterface\:\:shouldReceive\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Unit/Services/KafkaTransferServiceTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Bus\\Dispatcher\:\:shouldReceive\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Unit/Services/KafkaTransferServiceTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Cache\\Repository\:\:shouldReceive\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Unit/Services/KafkaTransferServiceTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			count: 14
+			path: tests/Unit/Services/TransferMessageConsumerTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			count: 11
+			path: tests/Unit/Services/TransferRetryMessageConsumerTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Unit/Services/TransferRetryPolicyTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Unit/Services/WalletTransferServiceTest.php
+
+		-
+			message: '#^Parameter \#1 \$authorizer of class App\\Services\\WalletTransferService constructor expects App\\Services\\AuthorizerClient, Mockery\\MockInterface given\.$#'
+			identifier: argument.type
+			count: 14
+			path: tests/Unit/Services/WalletTransferServiceTest.php
+
+		-
+			message: '#^Parameter \#3 \$logger of class App\\Services\\WalletTransferService constructor expects Psr\\Log\\LoggerInterface, Mockery\\MockInterface given\.$#'
+			identifier: argument.type
+			count: 14
+			path: tests/Unit/Services/WalletTransferServiceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model::\$id\.$#'
+			identifier: property.notFound
+			count: 5
+			path: tests/Feature/Console/PublishOutboxEventsCommandTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model::(markPublished|markFailed)\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Unit/Models/OutboxEventTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model::\$(status|attempts|last_error_at|payload|id)\.$#'
+			identifier: property.notFound
+			count: 7
+			path: tests/Unit/Models/OutboxEventTest.php
+
+		-
+			message: '#^Using nullsafe property access on non-nullable type Illuminate\\Database\\Eloquent\\Model\. Use \-> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 2
+			path: tests/Unit/Models/OutboxEventTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model::\$id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Unit/Services/IdempotencyKeyServiceTest.php
+
+		-
+			message: '#^Parameter \#3 \$transfer of method App\\Services\\IdempotencyKeyService::finalizeIdempotencyKey\(\) expects App\\Models\\Transfer, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: tests/Unit/Services/IdempotencyKeyServiceTest.php
+
+		-
+			message: '#^Parameter \#1 \$expected of method PHPUnit\\Framework\\Assert::assertSame\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: tests/Unit/Services/IdempotencyKeyServiceTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model::\$id\.$#'
+			identifier: property.notFound
+			count: 3
+			path: tests/Unit/Services/KafkaTransferProcessorTest.php
+
+		-
+			message: '#^Method Tests\\Unit\\Services\\KafkaTransferProcessorTest::createCompletedTransfer\(\) should return App\\Models\\Transfer but returns Illuminate\\Database\\Eloquent\\Model\.$#'
+			identifier: return.type
+			count: 1
+			path: tests/Unit/Services/KafkaTransferProcessorTest.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model::\$id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: tests/Unit/Services/KafkaTransferServiceTest.php
+
+		-
+			message: '#^Parameter \#4 \$transfer of method App\\Services\\KafkaTransferService::authorizeAndExecuteTransfer\(\) expects App\\Models\\Transfer, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/Unit/Services/KafkaTransferServiceTest.php

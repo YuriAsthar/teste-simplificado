@@ -6,21 +6,21 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 ## Structure
 | File/Folder | Purpose | Type |
 |-------------|---------|------|
-| `/app` | Laravel application code | Directory |
+| `/backend` | Laravel application code | Directory |
 | `/docker` | Docker configurations | Directory |
 | `/docker/nginx/default.conf` | Nginx server configuration | Config |
 | `/docker/init-multi-db.sql` | Database initialization script | SQL |
 | `/Dockerfile` | PHP 8.4-FPM container definition with PHP-FPM healthcheck support | Docker |
 | `/docker-compose.yml` | Multi-service orchestration with service_healthy dependency | Docker Compose |
 | `/.env.example` | Root Compose host port template (NGINX_HOST_PORT) | Config |
-| `/app/.env.example` | Sandbox environment template | Config |
-| `/app/.env.testing` | Testing environment config | Config |
-| `/app/ecs.php` | EasyCodingStandard configuration | Config |
-| `/app/phpstan.neon` | PHPStan analysis configuration | Config |
-| `/app/phpstan-baseline.neon` | PHPStan baseline rules | Config |
-| `/app/rector.php` | Rector refactoring configuration | Config |
-| `/app/phpmd.xml` | PHPMD ruleset and exclusions | Config |
-| `/app/agents.md` | Laravel application documentation | Doc |
+| `/backend/.env.example` | Sandbox environment template | Config |
+| `/backend/.env.testing` | Testing environment config | Config |
+| `/backend/ecs.php` | EasyCodingStandard configuration | Config |
+| `/backend/phpstan.neon` | PHPStan analysis configuration | Config |
+| `/backend/phpstan-baseline.neon` | PHPStan baseline rules | Config |
+| `/backend/rector.php` | Rector refactoring configuration | Config |
+| `/backend/phpmd.xml` | PHPMD ruleset and exclusions | Config |
+| `/backend/agents.md` | Laravel application documentation | Doc |
 
 ## Services
 - **app**: PHP 8.4-FPM with Laravel 13
@@ -39,7 +39,7 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 
 ## Setup
 1. Copy root `.env.example` to `.env` to set `NGINX_HOST_PORT` (default 8080).
-2. Copy `/app/.env.example` to `/app/.env` and generate an `APP_KEY`.
+2. Copy `/backend/.env.example` to `/backend/.env` and generate an `APP_KEY`.
 3. Start stack with `docker compose up -d --build`.
 4. Fix volume ownership: `docker compose run --rm --user root app chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache`.
 5. Run migrations: `docker compose run --rm app php artisan migrate --force`.
@@ -71,8 +71,8 @@ docker compose run --rm app composer phpmd
 ## API Versioning
 - The application is API-only: no Blade/web frontend, dashboard, login pages, query-string tokens, or session/cookie auth.
 - All API endpoints are under `/api/v1`.
-- Authentication is stateless via Sanctum bearer tokens: `POST /api/v1/auth/token` issues tokens; protected routes require `Authorization: Bearer <token>`.
+- Authentication is stateless via Sanctum bearer tokens: `POST /api/v1/auth/login` issues tokens; protected routes require `Authorization: Bearer <token>`. Account creation is public at `POST /api/v1/auth/register`, which also returns a bearer token. Registration requires three document fields: `document_country`, `document_type`, and `document_value`; `document_type` is validated against `DocumentType` and must be allowed for the provided country.
 
 ## Related
-- Child: /app/agents.md
+- Child: /backend/agents.md
 - Parent: ../agents.md

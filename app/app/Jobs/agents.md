@@ -6,14 +6,14 @@ Queueable job classes responsible for asynchronous side-effects, primarily trans
 ## Structure
 | File/Folder | Purpose | Type |
 |-------------|---------|------|
-| `SendNotificationJob.php` | Legacy notification job used by the Kafka/RabbitMQ messaging flow. | PHP |
-| `SendTransferNotificationJob.php` | New relational-flow notification job that calls the notifier API and marks transfers as notified. | PHP |
+| `SendNotificationJob.php` | Unified notification job. Resolves the transfer, skips missing/non-completed/already-notified records, calls `NotificationService::notifyTransfer()`, and marks the transfer as notified on success. Uses `rabbitmq` connection, 3 tries, exponential backoff `[10, 30, 60]`. | PHP |
 
 ## Conventions
 - Jobs implement `ShouldQueue` and use the standard Laravel queue traits.
 - Notification jobs receive only the `transferId` and resolve the transfer inside `handle()`.
-- `NotificationClient` is injected via method injection in `handle()`.
+- `NotificationService` is injected via method injection in `handle()`.
 - Use `forceFill()` for datetime columns to avoid PHPStan property-type warnings.
+- Throw `App\Exceptions\NotificationException` from the service so the queue worker can retry; log permanent failure in `failed()`.
 
 ## Related
 - Parent: /app/agents.md

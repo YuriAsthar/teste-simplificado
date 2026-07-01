@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Enums\TransferStatus;
+use App\Exceptions\NotificationException;
 use App\Models\Transfer;
-use App\Services\NotificationClient;
+use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -22,33 +24,60 @@ final class SendNotificationJob implements ShouldQueue
 
     public int $tries = 3;
 
-    public function __construct(
-        public readonly int $transferId,
-    ) {
+    /** @var array<int, int> */
+    public array $backoff = [10, 30, 60];
+
+    public function __construct(public readonly int $transferId)
+    {
+        $this->onConnection('rabbitmq');
     }
 
-    public function handle(NotificationClient $client): void
+    public function handle(NotificationService $notificationService): void
     {
-        $transfer = Transfer::query()
-            ->with(['payer.wallet', 'payee.wallet'])
-            ->find($this->transferId);
+        $transfer = Transfer::query()->with('payee')->find($this->transferId);
 
         if (is_null($transfer)) {
-            Log::warning('Transfer not found for notification.', [
+            Log::warning('Transfer not found for notification.', ['transfer_id' => $this->transferId]);
+
+            return;
+        }
+
+        if (!is_null($transfer->notified_at)) {
+            Log::info('Notification already sent; skipping.', ['transfer_id' => $this->transferId]);
+
+            return;
+        }
+
+        if ($transfer->status !== TransferStatus::Completed) {
+            Log::info('Notification skipped; transfer is not completed.', [
                 'transfer_id' => $this->transferId,
+                'status' => $transfer->status->value,
             ]);
 
             return;
         }
 
-        if ($client->notify()) {
-            $transfer->forceFill(['notified_at' => now()])->save();
+        try {
+            $notificationService->notifyTransfer($transfer);
+        } catch (NotificationException $exception) {
+            Log::warning('Notification attempt failed; will retry if attempts remain.', [
+                'transfer_id' => $this->transferId,
+                'attempt' => $this->attempts(),
+                'exception' => $exception->getMessage(),
+            ]);
 
-            return;
+            throw $exception;
         }
 
-        Log::warning('Notification service returned non-success.', [
+        $transfer->forceFill(['notified_at' => now()])->save();
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('Notification job failed permanently after retries.', [
             'transfer_id' => $this->transferId,
+            'job_id' => $this->job?->getJobId(),
+            'exception' => $exception->getMessage(),
         ]);
     }
 }

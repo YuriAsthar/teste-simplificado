@@ -13,10 +13,10 @@ use App\Enums\UserType;
 use App\Exceptions\AuthorizerRejectedException;
 use App\Exceptions\IdempotencyKeyInProgressException;
 use App\Exceptions\TransientAuthorizerException;
+use App\Jobs\SendNotificationJob;
 use App\Models\Transfer;
 use App\Models\User;
 use App\Models\Wallet;
-use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Psr\Log\LoggerInterface;
@@ -29,7 +29,6 @@ final readonly class WalletTransferService
 {
     public function __construct(
         private AuthorizerClient $authorizer,
-        private Dispatcher $dispatcher,
         private IdempotencyKeyService $idempotencyService,
         private LoggerInterface $logger,
     ) {
@@ -317,24 +316,19 @@ final readonly class WalletTransferService
                 'status' => TransferStatus::Completed,
             ]);
 
-            $this->dispatchNotification($transfer);
+            DB::afterCommit(function () use ($transfer): void {
+                try {
+                    SendNotificationJob::dispatch($transfer->id);
+                } catch (\Throwable $exception) {
+                    $this->logger->warning('Queue dispatch unavailable; notification skipped.', [
+                        'transfer_id' => $transfer->id,
+                        'exception' => $exception->getMessage(),
+                    ]);
+                }
+            });
 
             return $transfer;
         });
-    }
-
-    private function dispatchNotification(Transfer $transfer): void
-    {
-        try {
-            $this->dispatcher->dispatch(
-                new \App\Jobs\SendTransferNotificationJob($transfer->id),
-            );
-        } catch (\Throwable $exception) {
-            $this->logger->warning('Queue dispatch unavailable; notification skipped.', [
-                'transfer_id' => $transfer->id,
-                'exception' => $exception->getMessage(),
-            ]);
-        }
     }
 
     private function createFailedTransfer(

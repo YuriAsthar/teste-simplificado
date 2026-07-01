@@ -8,10 +8,9 @@ PHPUnit unit tests for isolated, fast components: services, jobs, and domain hel
 |-------------|---------|------|
 | `Support/MoneyParserTest.php` | Tests decimal-string → integer-cents parsing, including edge cases and rejection of invalid formats. | PHP |
 | `Casts/MoneyCastTest.php` | Tests `MoneyCast` strict int-in/int-out behavior and rejection of null, float, string, etc. | PHP |
-| `Jobs/SendNotificationJobTest.php` | Tests the legacy notification job marks transfers as notified on success/failure. | PHP |
-| `Jobs/SendTransferNotificationJobTest.php` | Tests the relational-flow notification job. | PHP |
-| `Services/AuthorizerClientTest.php` | Tests `AuthorizerClient` returns the `AuthorizerResult` enum for 2xx, 4xx, 5xx, and connection failures. | PHP |
-| `Services/WalletTransferServiceTest.php` | Tests the wallet-to-wallet transfer service: idempotency lock, fingerprint mismatch, in-progress state, stale-key recovery, transient authorizer cleanup, authorizer rejection cleanup, replay, and failure paths. | PHP |
+| `Services/NotificationServiceTest.php` | Tests `NotificationService` using `Http::fake()` because the class is `final readonly`: success response, non-success HTTP status, non-success JSON status, connection failure, and payee email fallback. | PHP |
+| `Jobs/SendNotificationJobTest.php` | Tests the unified notification job: marks transfers notified on success, throws `NotificationException` on failure, skips non-completed/already-notified/missing transfers. | PHP |
+| `Services/WalletTransferServiceTest.php` | Tests the wallet-to-wallet transfer service: idempotency lock, fingerprint mismatch, in-progress state, stale-key recovery, transient authorizer cleanup, authorizer rejection cleanup, replay, failure paths, and `SendNotificationJob` dispatch via `Queue::fake()`. | PHP |
 | `Services/IdempotencyKeyServiceTest.php` | Tests idempotency fingerprint fixed order and SHA-256 format. | PHP |
 | `Services/KafkaTransferServiceTest.php` | Tests the legacy Kafka transfer service. | PHP |
 | `Services/KafkaTransferProcessorTest.php` | Tests the RabbitMQ transfer processor. | PHP |

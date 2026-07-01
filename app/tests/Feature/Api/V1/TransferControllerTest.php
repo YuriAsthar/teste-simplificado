@@ -9,7 +9,7 @@ use App\Enums\FailureReason;
 use App\Enums\IdempotencyKeyStatus;
 use App\Enums\TransferStatus;
 use App\Enums\UserType;
-use App\Jobs\SendTransferNotificationJob;
+use App\Jobs\SendNotificationJob;
 use App\Models\IdempotencyKey;
 use App\Models\Transfer;
 use App\Models\User;
@@ -89,7 +89,7 @@ final class TransferControllerTest extends TestCase
         $this->assertSame(7500, (int) $payer->fresh()?->wallet->getRawOriginal('balance'));
         $this->assertSame(2500, (int) $payee->fresh()?->wallet->getRawOriginal('balance'));
 
-        Queue::assertPushed(SendTransferNotificationJob::class);
+        Queue::assertPushed(SendNotificationJob::class);
     }
 
     public function test_it_returns_failed_transfer_when_payer_has_insufficient_funds(): void

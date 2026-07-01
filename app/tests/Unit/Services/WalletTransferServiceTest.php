@@ -14,15 +14,15 @@ use App\Exceptions\AuthorizerRejectedException;
 use App\Exceptions\IdempotencyKeyFingerprintMismatchException;
 use App\Exceptions\IdempotencyKeyInProgressException;
 use App\Exceptions\TransientAuthorizerException;
-use App\Jobs\SendTransferNotificationJob;
+use App\Jobs\SendNotificationJob;
 use App\Models\IdempotencyKey;
 use App\Models\Transfer;
 use App\Models\User;
 use App\Services\AuthorizerClient;
 use App\Services\IdempotencyKeyService;
 use App\Services\WalletTransferService;
-use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Mockery;
 use Psr\Log\LoggerInterface;
 use Tests\TestCase;
@@ -33,8 +33,6 @@ final class WalletTransferServiceTest extends TestCase
 
     private Mockery\MockInterface $authorizer;
 
-    private Mockery\MockInterface $dispatcher;
-
     private IdempotencyKeyService $idempotencyService;
 
     private Mockery\MockInterface $logger;
@@ -44,7 +42,6 @@ final class WalletTransferServiceTest extends TestCase
         parent::setUp();
 
         $this->authorizer = Mockery::mock(AuthorizerClient::class);
-        $this->dispatcher = Mockery::mock(Dispatcher::class);
         $this->idempotencyService = new IdempotencyKeyService();
         $this->logger = Mockery::mock(LoggerInterface::class);
     }
@@ -57,6 +54,8 @@ final class WalletTransferServiceTest extends TestCase
 
     public function test_it_completes_transfer_between_common_users(): void
     {
+        Queue::fake();
+
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
@@ -66,13 +65,8 @@ final class WalletTransferServiceTest extends TestCase
             ->once()
             ->andReturn(AuthorizerResult::Authorized);
 
-        $this->dispatcher->shouldReceive('dispatch')
-            ->once()
-            ->with(Mockery::on(static fn (SendTransferNotificationJob $job): bool => $job->transferId > 0));
-
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -87,6 +81,10 @@ final class WalletTransferServiceTest extends TestCase
             'key' => 'key-1',
             'status' => IdempotencyKeyStatus::Completed->value,
         ]);
+
+        Queue::assertPushed(SendNotificationJob::class, function ($job) use ($transfer): bool {
+            return $job->transferId === $transfer->getKey();
+        });
     }
 
     public function test_it_fails_when_payer_is_merchant(): void
@@ -96,7 +94,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -116,7 +113,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -136,7 +132,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -162,7 +157,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -183,6 +177,8 @@ final class WalletTransferServiceTest extends TestCase
 
     public function test_it_returns_existing_transfer_for_duplicate_idempotency_key(): void
     {
+        Queue::fake();
+
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
@@ -192,13 +188,8 @@ final class WalletTransferServiceTest extends TestCase
             ->once()
             ->andReturn(AuthorizerResult::Authorized);
 
-        $this->dispatcher->shouldReceive('dispatch')
-            ->once()
-            ->with(Mockery::on(static fn (SendTransferNotificationJob $job): bool => $job->transferId > 0));
-
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -207,10 +198,16 @@ final class WalletTransferServiceTest extends TestCase
         $second = $service->execute($payer->id, $payee->id, 1000, 'duplicate-key');
 
         $this->assertSame($first->id, $second->id);
+
+        Queue::assertPushed(SendNotificationJob::class, function ($job) use ($first): bool {
+            return $job->transferId === $first->getKey();
+        });
     }
 
     public function test_it_throws_when_same_key_used_with_different_payload(): void
     {
+        Queue::fake();
+
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
@@ -220,18 +217,15 @@ final class WalletTransferServiceTest extends TestCase
             ->once()
             ->andReturn(AuthorizerResult::Authorized);
 
-        $this->dispatcher->shouldReceive('dispatch')
-            ->once()
-            ->with(Mockery::on(static fn (SendTransferNotificationJob $job): bool => $job->transferId > 0));
-
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
 
         $service->execute($payer->id, $payee->id, 1000, 'mismatch-key');
+
+        Queue::assertPushed(SendNotificationJob::class);
 
         $this->expectException(IdempotencyKeyFingerprintMismatchException::class);
 
@@ -253,7 +247,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -276,7 +269,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -298,7 +290,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -315,7 +306,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -335,7 +325,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -348,6 +337,8 @@ final class WalletTransferServiceTest extends TestCase
 
     public function test_it_recovers_stale_processing_idempotency_key(): void
     {
+        Queue::fake();
+
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
@@ -356,10 +347,6 @@ final class WalletTransferServiceTest extends TestCase
         $this->authorizer->shouldReceive('authorize')
             ->once()
             ->andReturn(AuthorizerResult::Authorized);
-
-        $this->dispatcher->shouldReceive('dispatch')
-            ->once()
-            ->with(Mockery::on(static fn (SendTransferNotificationJob $job): bool => $job->transferId > 0));
 
         IdempotencyKey::factory()->create([
             'key' => 'stale-key',
@@ -372,7 +359,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );
@@ -384,6 +370,10 @@ final class WalletTransferServiceTest extends TestCase
             'key' => 'stale-key',
             'status' => IdempotencyKeyStatus::Completed->value,
         ]);
+
+        Queue::assertPushed(SendNotificationJob::class, function ($job) use ($transfer): bool {
+            return $job->transferId === $transfer->getKey();
+        });
     }
 
     public function test_it_replays_existing_transfer_from_completed_idempotency_key(): void
@@ -410,7 +400,6 @@ final class WalletTransferServiceTest extends TestCase
 
         $service = new WalletTransferService(
             $this->authorizer,
-            $this->dispatcher,
             $this->idempotencyService,
             $this->logger,
         );

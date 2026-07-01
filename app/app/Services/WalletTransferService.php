@@ -10,6 +10,7 @@ use App\Enums\FailureReason;
 use App\Enums\IdempotencyKeyStatus;
 use App\Enums\TransferStatus;
 use App\Enums\UserType;
+use App\Exceptions\AuthorizerRejectedException;
 use App\Exceptions\IdempotencyKeyInProgressException;
 use App\Exceptions\TransientAuthorizerException;
 use App\Models\Transfer;
@@ -35,6 +36,7 @@ final readonly class WalletTransferService
     }
 
     /**
+     * @throws AuthorizerRejectedException
      * @throws TransientAuthorizerException
      */
     public function execute(
@@ -95,6 +97,7 @@ final readonly class WalletTransferService
     }
 
     /**
+     * @throws AuthorizerRejectedException
      * @throws TransientAuthorizerException
      */
     private function executeWithKey(
@@ -128,7 +131,11 @@ final readonly class WalletTransferService
 
         try {
             $transfer = $this->runValidationsAndTransaction($payerId, $payeeId, $amount, $idempotencyKey, $fingerprint);
-        } catch (TransientAuthorizerException $exception) {
+        } catch (AuthorizerRejectedException|TransientAuthorizerException $exception) {
+            $this->idempotencyService->deleteProcessingIdempotencyKey($idempotencyKey);
+
+            throw $exception;
+        } catch (\Throwable $exception) {
             $this->idempotencyService->deleteProcessingIdempotencyKey($idempotencyKey);
 
             throw $exception;
@@ -140,6 +147,7 @@ final readonly class WalletTransferService
     }
 
     /**
+     * @throws AuthorizerRejectedException
      * @throws TransientAuthorizerException
      */
     private function runValidationsAndTransaction(
@@ -227,14 +235,7 @@ final readonly class WalletTransferService
         $authorizerResult = $this->authorizer->authorize();
 
         if ($authorizerResult === AuthorizerResult::Rejected) {
-            return $this->createFailedTransfer(
-                $payerId,
-                $payeeId,
-                $amount,
-                $idempotencyKey,
-                FailureReason::AuthorizerRejected,
-                $fingerprint,
-            );
+            throw new AuthorizerRejectedException();
         }
 
         if ($authorizerResult === AuthorizerResult::Transient) {

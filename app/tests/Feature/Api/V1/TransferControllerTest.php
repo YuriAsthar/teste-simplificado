@@ -147,12 +147,16 @@ final class TransferControllerTest extends TestCase
             ->assertJsonPath('data.failure_reason', FailureReason::PayerIsMerchant->value);
     }
 
-    public function test_it_returns_failed_transfer_when_authorizer_rejects(): void
+    public function test_it_returns_422_when_authorizer_rejects_and_allows_retry(): void
     {
         Http::fake([
-            'https://util.devi.tools/api/v2/authorize' => Http::response([
-                'data' => ['authorization' => false],
-            ], 200),
+            'https://util.devi.tools/api/v2/authorize' => Http::sequence()
+                ->push([
+                    'data' => ['authorization' => false],
+                ], 200)
+                ->push([
+                    'data' => ['authorization' => true],
+                ], 200),
         ]);
         Queue::fake();
 
@@ -163,16 +167,31 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($payer);
 
-        $response = $this->postJson('/api/v1/transfer', [
+        $payload = [
             'payer' => $payer->id,
             'payee' => $payee->id,
             'amount' => 1000,
-        ], [
+        ];
+
+        $response = $this->postJson('/api/v1/transfer', $payload, [
             'Idempotency-Key' => 'authorizer-rejects',
         ]);
 
         $response->assertStatus(422)
-            ->assertJsonPath('data.failure_reason', FailureReason::AuthorizerRejected->value);
+            ->assertJsonPath('code', 'authorizer_rejected')
+            ->assertJsonPath('message', FailureReason::AuthorizerRejected->description());
+
+        $this->assertDatabaseCount('transfers', 0);
+        $this->assertDatabaseMissing('idempotency_keys', [
+            'key' => 'authorizer-rejects',
+        ]);
+
+        $retry = $this->postJson('/api/v1/transfer', $payload, [
+            'Idempotency-Key' => 'authorizer-rejects',
+        ]);
+
+        $retry->assertStatus(201)
+            ->assertJsonPath('data.status', TransferStatus::Completed->value);
     }
 
     public function test_it_returns_failed_transfer_when_payee_wallet_is_soft_deleted(): void

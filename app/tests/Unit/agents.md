@@ -11,7 +11,7 @@ PHPUnit unit tests for isolated, fast components: services, jobs, and domain hel
 | `Jobs/SendNotificationJobTest.php` | Tests the legacy notification job marks transfers as notified on success/failure. | PHP |
 | `Jobs/SendTransferNotificationJobTest.php` | Tests the relational-flow notification job. | PHP |
 | `Services/AuthorizerClientTest.php` | Tests `AuthorizerClient` returns the `AuthorizerResult` enum for 2xx, 4xx, 5xx, and connection failures. | PHP |
-| `Services/WalletTransferServiceTest.php` | Tests the wallet-to-wallet transfer service: idempotency lock, fingerprint mismatch, in-progress state, stale-key recovery, transient authorizer cleanup, replay, and failure paths. | PHP |
+| `Services/WalletTransferServiceTest.php` | Tests the wallet-to-wallet transfer service: idempotency lock, fingerprint mismatch, in-progress state, stale-key recovery, transient authorizer cleanup, authorizer rejection cleanup, replay, and failure paths. | PHP |
 | `Services/IdempotencyKeyServiceTest.php` | Tests idempotency fingerprint fixed order and SHA-256 format. | PHP |
 | `Services/KafkaTransferServiceTest.php` | Tests the legacy Kafka transfer service. | PHP |
 | `Services/KafkaTransferProcessorTest.php` | Tests the RabbitMQ transfer processor. | PHP |

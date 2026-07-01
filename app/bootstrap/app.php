@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\AuthorizerRejectedException;
 use App\Exceptions\IdempotencyKeyFingerprintMismatchException;
 use App\Exceptions\IdempotencyKeyInProgressException;
 use App\Exceptions\TransientAuthorizerException;
@@ -59,6 +60,17 @@ return Application::configure(basePath: dirname(__DIR__))
             return response()->json([
                 'message' => $exception->getMessage(),
                 'code' => 'authorizer_unavailable',
+            ], $exception->getStatusCode());
+        });
+
+        $exceptions->renderable(function (AuthorizerRejectedException $exception, Request $request): ?JsonResponse {
+            if (!$request->is('api/*')) {
+                return null;
+            }
+
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'code' => 'authorizer_rejected',
             ], $exception->getStatusCode());
         });
     })->create();

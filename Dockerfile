@@ -7,14 +7,18 @@ RUN apt-get update && apt-get install -y \
     unzip \
     git \
     curl \
+    netcat-openbsd \
     librdkafka-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo_pgsql pgsql zip
 
-# Install Redis and rdkafka extensions via PECL
-RUN pecl install redis rdkafka && docker-php-ext-enable redis rdkafka
+# Install Redis extension via PECL
+RUN pecl install redis && docker-php-ext-enable redis
+
+# Install rdkafka extension via PECL
+RUN pecl install rdkafka && docker-php-ext-enable rdkafka
 
 # Copy Composer from official Composer image
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

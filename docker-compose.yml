@@ -16,22 +16,29 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 9000 || bash -c '</dev/tcp/127.0.0.1/9000'"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     environment:
       - APP_ENV=sandbox
       - APP_DEBUG=true
 
   web:
-    image: nginx:alpine
+    image: nginx:1.25-alpine
     container_name: wallet-web
     ports:
-      - "8080:80"
+      - "${NGINX_HOST_PORT:-8080}:80"
     volumes:
       - ./app:/var/www/html
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
     networks:
       - backend
     depends_on:
-      - app
+      app:
+        condition: service_healthy
 
   db:
     image: postgres:16

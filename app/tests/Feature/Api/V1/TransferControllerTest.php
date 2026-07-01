@@ -25,7 +25,7 @@ final class TransferControllerTest extends TestCase
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
             'value' => '25.00',
@@ -42,7 +42,7 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($other);
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
             'value' => '25.00',
@@ -67,7 +67,7 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($payer);
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
             'value' => '25.00',
@@ -101,7 +101,7 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($payer);
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
             'value' => '5.00',
@@ -126,7 +126,7 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($merchant);
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payer' => $merchant->id,
             'payee' => $payee->id,
             'value' => '10.00',
@@ -152,7 +152,7 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($payer);
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
             'value' => '10.00',
@@ -179,7 +179,7 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($payer);
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
             'value' => '10.00',
@@ -206,7 +206,7 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($payer);
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
             'value' => '10.00',
@@ -238,11 +238,11 @@ final class TransferControllerTest extends TestCase
             'value' => '10.00',
         ];
 
-        $first = $this->postJson('/api/transfer', $payload, [
+        $first = $this->postJson('/api/v1/transfer', $payload, [
             'Idempotency-Key' => 'duplicate-key',
         ]);
 
-        $second = $this->postJson('/api/transfer', $payload, [
+        $second = $this->postJson('/api/v1/transfer', $payload, [
             'Idempotency-Key' => 'duplicate-key',
         ]);
 
@@ -260,7 +260,7 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($payer);
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payee' => $payer->id,
             'value' => '10.00',
         ]);
@@ -276,7 +276,7 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($payer);
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
             'value' => '0',
@@ -292,7 +292,7 @@ final class TransferControllerTest extends TestCase
 
         Sanctum::actingAs($payer);
 
-        $response = $this->postJson('/api/transfer', [
+        $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payer->id,
             'value' => '10.00',

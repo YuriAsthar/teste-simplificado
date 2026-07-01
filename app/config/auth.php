@@ -12,8 +12,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | This option defines the default authentication "guard" and password
-    | reset "broker" for your application. You may change these values
-    | as required, but they're a perfect start for most applications.
+    | reset "broker" for your application. The default "web" guard is kept
+    | because LoginService uses it for password validation, but the API is
+    | consumed exclusively through stateless Sanctum bearer tokens.
     |
     */
 
@@ -27,21 +28,21 @@ return [
     | Authentication Guards
     |--------------------------------------------------------------------------
     |
-    | Next, you may define every authentication guard for your application.
-    | Of course, a great default configuration has been defined for you
-    | which utilizes session storage plus the Eloquent user provider.
+    | The API-only surface uses the Sanctum guard for bearer token requests.
+    | The legacy "web" session guard remains solely so LoginService can
+    | validate credentials against the users provider before issuing tokens.
     |
-    | All authentication guards have a user provider, which defines how the
-    | users are actually retrieved out of your database or other storage
-    | system used by the application. Typically, Eloquent is utilized.
-    |
-    | Supported: "session"
+    | Supported: "session", "sanctum"
     |
     */
 
     'guards' => [
         'web' => [
             'driver' => 'session',
+            'provider' => 'users',
+        ],
+        'sanctum' => [
+            'driver' => 'sanctum',
             'provider' => 'users',
         ],
     ],

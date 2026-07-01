@@ -6,6 +6,7 @@ REST API controllers for version 1 of the payment domain.
 ## Files
 - `TransferController.php` — Handles `POST /api/v1/transfer`. Validates input via `CreateTransferRequest`, resolves the acting user, and delegates execution to `WalletTransferService`.
 - `TokenController.php` — Handles `POST /api/v1/auth/token`. Validates credentials via `LoginRequest` and returns an access token.
+- `LogoutController.php` — Handles `POST /api/v1/auth/logout`. Revokes the current Sanctum bearer token for the authenticated user.
 
 ## Conventions
 - Controllers are thin: validation, authorization, and response formatting only.

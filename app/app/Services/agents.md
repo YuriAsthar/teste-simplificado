@@ -6,6 +6,7 @@ Business-logic services. The directory contains both the legacy Kafka/publisher 
 ## Files
 - `WalletTransferService.php` — Core wallet-to-wallet executor: cache locks, database transaction, balance update, idempotency, failure recording.
 - `LoginService.php` — Authenticates users and issues Sanctum tokens.
+- `LogoutService.php` — Revokes the current Sanctum bearer token for the authenticated user.
 - `AuthorizerClient.php` — External authorizer HTTP client with retry on connection failure.
 - `NotificationClient.php` — External notification HTTP client for transfer notifications.
 - `TransferService.php` — Legacy service that publishes transfer messages and dispatches notification jobs (retained for messaging flow).

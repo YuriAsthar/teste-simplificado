@@ -10,8 +10,6 @@ use Tests\TestCase;
 
 final class TokenControllerTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_it_issues_token_for_valid_credentials(): void
     {
         $user = User::factory()->create();

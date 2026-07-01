@@ -12,8 +12,6 @@ use Tests\TestCase;
 
 final class OutboxEventTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_pending_scope_returns_only_eligible_events(): void
     {
         OutboxEvent::factory()->create([
@@ -60,7 +58,7 @@ final class OutboxEventTest extends TestCase
 
         $event->markPublished();
 
-        $this->assertSame(OutboxStatus::Published, $event->fresh()?->status);
+        $this->assertSame(OutboxStatus::Published, $event->fresh()->status);
     }
 
     public function test_mark_failed_sets_status_to_failed_and_increments_attempts(): void
@@ -73,9 +71,9 @@ final class OutboxEventTest extends TestCase
         $event->markFailed();
 
         $fresh = $event->fresh();
-        $this->assertSame(OutboxStatus::Failed, $fresh?->status);
-        $this->assertSame(1, $fresh?->attempts);
-        $this->assertNotNull($fresh?->last_error_at);
+        $this->assertSame(OutboxStatus::Failed, $fresh->status);
+        $this->assertSame(1, $fresh->attempts);
+        $this->assertNotNull($fresh->last_error_at);
     }
 
     public function test_unique_index_enforces_one_event_per_aggregate_and_type(): void

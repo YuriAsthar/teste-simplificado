@@ -21,8 +21,6 @@ use Tests\TestCase;
 
 final class TransferControllerTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_transfer_requires_authentication(): void
     {
         $payer = User::factory()->create();

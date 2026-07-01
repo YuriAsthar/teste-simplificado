@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
+use App\Contracts\TransferPublisherInterface;
 use App\Services\DryRun\DryRunContext;
 use App\Services\DryRun\DryRunRecorder;
 use App\Services\KafkaTransferProcessor;
@@ -17,18 +18,17 @@ use Tests\TestCase;
 
 final class TransferRetryMessageConsumerTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_reprocesses_message_when_due(): void
     {
         Carbon::setTestNow('2026-01-01 12:00:00');
 
         $processor = $this->mock(KafkaTransferProcessor::class);
-        $retryPolicy = $this->mock(TransferRetryPolicy::class);
+        $publisher = $this->createFakePublisher();
+        $retryPolicy = new TransferRetryPolicy($publisher);
         $context = new DryRunContext(new DryRunRecorder());
 
         $payload = [
-            'transfer_id' => 'txn_123',
+            'transfer_id' => '123',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
@@ -38,11 +38,10 @@ final class TransferRetryMessageConsumerTest extends TestCase
             ->once()
             ->with($payload);
 
-        $retryPolicy->shouldNotReceive('publishRetry');
-        $retryPolicy->shouldNotReceive('publishDlq');
-
-        $consumer = new TransferRetryMessageConsumer($processor, $retryPolicy, $context);
+        $consumer = new TestableTransferRetryMessageConsumer($processor, $retryPolicy, $context);
         $consumer->consume($this->buildMessage(Carbon::now()->subMinute(), $payload));
+
+        $this->assertCount(0, $publisher->published);
 
         Carbon::setTestNow();
     }
@@ -52,23 +51,17 @@ final class TransferRetryMessageConsumerTest extends TestCase
         Carbon::setTestNow('2026-01-01 12:00:00');
 
         $processor = $this->mock(KafkaTransferProcessor::class);
-        $retryPolicy = $this->mock(TransferRetryPolicy::class);
+        $publisher = $this->createFakePublisher();
+        $retryPolicy = new TransferRetryPolicy($publisher);
         $context = new DryRunContext(new DryRunRecorder());
 
         $processor->shouldReceive('process')
             ->once();
 
-        $retryPolicy->shouldNotReceive('publishDlq');
-
-        $consumer = $this->getMockBuilder(TransferRetryMessageConsumer::class)
-            ->setConstructorArgs([$processor, $retryPolicy, $context])
-            ->onlyMethods(['sleepUntilDue'])
-            ->getMock();
-
-        $consumer->expects($this->once())
-            ->method('sleepUntilDue');
-
+        $consumer = new TestableTransferRetryMessageConsumer($processor, $retryPolicy, $context);
         $consumer->consume($this->buildMessage(Carbon::now()->addMinute()));
+
+        $this->assertTrue($consumer->sleepCalled);
 
         Carbon::setTestNow();
     }
@@ -76,39 +69,38 @@ final class TransferRetryMessageConsumerTest extends TestCase
     public function test_sends_missing_meta_to_dlq(): void
     {
         $processor = $this->mock(KafkaTransferProcessor::class);
-        $retryPolicy = $this->mock(TransferRetryPolicy::class);
+        $publisher = $this->createFakePublisher();
+        $retryPolicy = new TransferRetryPolicy($publisher);
         $context = new DryRunContext(new DryRunRecorder());
 
         $processor->shouldNotReceive('process');
 
-        $retryPolicy->shouldReceive('publishDlq')
-            ->once()
-            ->with(['payload' => []], 'missing meta');
-
         $consumer = new TransferRetryMessageConsumer($processor, $retryPolicy, $context);
         $consumer->consume(['payload' => []]);
+
+        $this->assertCount(1, $publisher->published);
+        $this->assertSame('wallet.transfer.dlq', $publisher->published[0]['topic']);
+        $this->assertSame('missing meta', $publisher->published[0]['envelope']['meta']['reason']);
     }
 
     public function test_sends_missing_retry_metadata_to_dlq(): void
     {
         $processor = $this->mock(KafkaTransferProcessor::class);
-        $retryPolicy = $this->mock(TransferRetryPolicy::class);
+        $publisher = $this->createFakePublisher();
+        $retryPolicy = new TransferRetryPolicy($publisher);
         $context = new DryRunContext(new DryRunRecorder());
 
         $processor->shouldNotReceive('process');
 
-        $retryPolicy->shouldReceive('publishDlq')
-            ->once()
-            ->with(
-                $this->anything(),
-                'missing retry metadata'
-            );
-
         $consumer = new TransferRetryMessageConsumer($processor, $retryPolicy, $context);
         $consumer->consume([
             'meta' => ['version' => '1.0'],
-            'payload' => ['transfer_id' => 'txn_123'],
+            'payload' => ['transfer_id' => '123'],
         ]);
+
+        $this->assertCount(1, $publisher->published);
+        $this->assertSame('wallet.transfer.dlq', $publisher->published[0]['topic']);
+        $this->assertSame('missing retry metadata', $publisher->published[0]['envelope']['meta']['reason']);
     }
 
     public function test_retries_on_processor_failure_when_attempt_is_below_limit(): void
@@ -116,12 +108,13 @@ final class TransferRetryMessageConsumerTest extends TestCase
         Carbon::setTestNow('2026-01-01 12:00:00');
 
         $processor = $this->mock(KafkaTransferProcessor::class);
-        $retryPolicy = $this->mock(TransferRetryPolicy::class);
+        $publisher = $this->createFakePublisher();
+        $retryPolicy = new TransferRetryPolicy($publisher);
         $context = new DryRunContext(new DryRunRecorder());
         $exception = new RuntimeException('processor failed');
 
         $payload = [
-            'transfer_id' => 'txn_123',
+            'transfer_id' => '123',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
@@ -132,19 +125,14 @@ final class TransferRetryMessageConsumerTest extends TestCase
             ->with($payload)
             ->andThrow($exception);
 
-        $retryPolicy->shouldReceive('shouldRetry')
-            ->once()
-            ->with(1)
-            ->andReturn(true);
-
-        $retryPolicy->shouldReceive('publishRetry')
-            ->once()
-            ->with('txn_123', $payload, 1, 'processor failed');
-
-        $retryPolicy->shouldNotReceive('publishDlq');
-
         $consumer = new TransferRetryMessageConsumer($processor, $retryPolicy, $context);
         $consumer->consume($this->buildMessage(Carbon::now()->subMinute(), $payload, 1));
+
+        $this->assertCount(1, $publisher->published);
+        $this->assertSame('wallet.transfer.retry', $publisher->published[0]['topic']);
+        $this->assertSame(2, $publisher->published[0]['envelope']['meta']['retry']['attempt']);
+        $this->assertSame('processor failed', $publisher->published[0]['envelope']['meta']['reason']);
+        $this->assertSame('123', $publisher->published[0]['envelope']['payload']['transfer_id']);
 
         Carbon::setTestNow();
     }
@@ -154,12 +142,13 @@ final class TransferRetryMessageConsumerTest extends TestCase
         Carbon::setTestNow('2026-01-01 12:00:00');
 
         $processor = $this->mock(KafkaTransferProcessor::class);
-        $retryPolicy = $this->mock(TransferRetryPolicy::class);
+        $publisher = $this->createFakePublisher();
+        $retryPolicy = new TransferRetryPolicy($publisher);
         $context = new DryRunContext(new DryRunRecorder());
         $exception = new RuntimeException('processor failed');
 
         $payload = [
-            'transfer_id' => 'txn_123',
+            'transfer_id' => '123',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
@@ -172,19 +161,12 @@ final class TransferRetryMessageConsumerTest extends TestCase
             ->with($payload)
             ->andThrow($exception);
 
-        $retryPolicy->shouldReceive('shouldRetry')
-            ->once()
-            ->with(3)
-            ->andReturn(false);
-
-        $retryPolicy->shouldNotReceive('publishRetry');
-
-        $retryPolicy->shouldReceive('publishDlq')
-            ->once()
-            ->with($message, 'processor failed');
-
         $consumer = new TransferRetryMessageConsumer($processor, $retryPolicy, $context);
         $consumer->consume($message);
+
+        $this->assertCount(1, $publisher->published);
+        $this->assertSame('wallet.transfer.dlq', $publisher->published[0]['topic']);
+        $this->assertSame('processor failed', $publisher->published[0]['envelope']['meta']['reason']);
 
         Carbon::setTestNow();
     }
@@ -194,12 +176,13 @@ final class TransferRetryMessageConsumerTest extends TestCase
         Carbon::setTestNow('2026-01-01 12:00:00');
 
         $processor = $this->mock(KafkaTransferProcessor::class);
-        $retryPolicy = $this->mock(TransferRetryPolicy::class);
+        $publisher = $this->createFakePublisher();
+        $retryPolicy = new TransferRetryPolicy($publisher);
         $context = new DryRunContext(new DryRunRecorder());
         $context->enable();
 
         $payload = [
-            'transfer_id' => 'txn_123',
+            'transfer_id' => '123',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
@@ -209,18 +192,11 @@ final class TransferRetryMessageConsumerTest extends TestCase
             ->once()
             ->with($payload);
 
-        $retryPolicy->shouldNotReceive('publishDlq');
-
-        $consumer = $this->getMockBuilder(TransferRetryMessageConsumer::class)
-            ->setConstructorArgs([$processor, $retryPolicy, $context])
-            ->onlyMethods(['sleepUntilDue'])
-            ->getMock();
-
-        $consumer->expects($this->never())
-            ->method('sleepUntilDue');
-
+        $consumer = new TestableTransferRetryMessageConsumer($processor, $retryPolicy, $context);
         $scheduledAt = Carbon::now()->addMinute();
         $consumer->consume($this->buildMessage($scheduledAt, $payload));
+
+        $this->assertFalse($consumer->sleepCalled);
 
         $entries = $context->flush();
         $this->assertCount(1, $entries);
@@ -236,7 +212,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
      * @return array<string, mixed>
      */
     private function buildMessage(Carbon $scheduledAt, array $payload = [
-        'transfer_id' => 'txn_123',
+        'transfer_id' => '123',
         'payer_id' => 1,
         'payee_id' => 2,
         'amount' => 1000,
@@ -254,5 +230,32 @@ final class TransferRetryMessageConsumerTest extends TestCase
             ],
             'payload' => $payload,
         ];
+    }
+
+    private function createFakePublisher(): object
+    {
+        return new class() implements TransferPublisherInterface {
+            /** @var list<array{topic: string, envelope: array<string, mixed>, key: string|null}> */
+            public array $published = [];
+
+            public function publish(string $topic, array $payload, ?string $key = null): void
+            {
+                $this->published[] = [
+                    'topic' => $topic,
+                    'envelope' => $payload,
+                    'key' => $key,
+                ];
+            }
+        };
+    }
+}
+
+class TestableTransferRetryMessageConsumer extends TransferRetryMessageConsumer
+{
+    public bool $sleepCalled = false;
+
+    protected function sleepUntilDue(\DateTimeInterface $scheduledAt): void
+    {
+        $this->sleepCalled = true;
     }
 }

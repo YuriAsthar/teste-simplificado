@@ -11,8 +11,6 @@ use Tests\TestCase;
 
 abstract class KafkaTestCase extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     protected ?string $broker = null;
 
     protected function setUp(): void

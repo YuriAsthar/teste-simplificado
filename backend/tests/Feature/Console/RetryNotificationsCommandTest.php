@@ -13,8 +13,6 @@ use Tests\TestCase;
 
 final class RetryNotificationsCommandTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_it_dispatches_notification_jobs_for_pending_notifications(): void
     {
         Queue::fake();

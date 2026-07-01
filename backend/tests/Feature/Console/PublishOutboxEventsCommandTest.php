@@ -14,8 +14,6 @@ use Tests\TestCase;
 
 final class PublishOutboxEventsCommandTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     protected function setUp(): void
     {
         parent::setUp();

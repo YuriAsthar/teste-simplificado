@@ -15,8 +15,6 @@ use Tests\TestCase;
 
 final class IdempotencyKeyServiceTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_request_hash_uses_fixed_payer_payee_amount_order(): void
     {
         $service = new IdempotencyKeyService();

@@ -24,9 +24,6 @@ final readonly class IdempotencyKeyService
     }
 
     /**
-     * @param array\u003cstring, mixed\u003e $validated
-     */
-    /**
      * @param array<string, mixed> $validated
      */
     public function buildRequestHashFromValidated(array $validated): string

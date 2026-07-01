@@ -9,17 +9,17 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory\u003cTransfer\u003e
+ * @extends Factory<Transfer>
  */
 class TransferFactory extends Factory
 {
     /**
-     * @var class-string\u003cTransfer\u003e
+     * @var class-string<Transfer>
      */
     protected $model = Transfer::class;
 
     /**
-     * @return array\u003cstring, mixed\u003e
+     * @return array<string, mixed>
      */
     public function definition(): array
     {

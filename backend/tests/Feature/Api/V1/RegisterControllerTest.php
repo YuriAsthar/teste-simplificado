@@ -11,8 +11,6 @@ use Tests\TestCase;
 
 final class RegisterControllerTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_it_registers_a_new_user_with_valid_data(): void
     {
         $payload = [

@@ -30,8 +30,6 @@ use Tests\TestCase;
 
 final class WalletTransferServiceTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     private Mockery\MockInterface $authorizer;
 
     private IdempotencyKeyService $idempotencyService;

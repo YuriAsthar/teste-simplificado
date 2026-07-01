@@ -15,8 +15,6 @@ use Tests\TestCase;
 
 final class ConsumeTransfersCommandTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_dry_run_enables_context_and_forces_manual_commit(): void
     {
         Kafka::fake();

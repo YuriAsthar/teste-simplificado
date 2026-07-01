@@ -6,14 +6,11 @@ namespace Tests\Feature;
 
 use App\Enums\DocumentType;
 use App\Models\User;
-use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class DocumentValueBackfillMigrationTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_it_backfills_masked_cpf_and_cnpj_records(): void
     {
         DB::table('users')->insert([
@@ -50,6 +47,11 @@ final class DocumentValueBackfillMigrationTest extends TestCase
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+        ]);
+
+        $this->artisan('migrate:rollback', [
+            '--path' => 'database/migrations/2026_07_02_400000_normalize_document_values.php',
+            '--force' => true,
         ]);
 
         $this->artisan('migrate', [

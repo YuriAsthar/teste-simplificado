@@ -10,7 +10,7 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 | `/docker` | Docker configurations | Directory |
 | `/docker/nginx/default.conf` | Nginx server configuration | Config |
 | `/docker/init-multi-db.sql` | Database initialization script | SQL |
-| `/Dockerfile` | PHP 8.4-FPM container definition with PHP-FPM healthcheck support | Docker |
+| `/Dockerfile` | PHP 8.4-FPM container definition with PHP-FPM healthcheck support; installs `pdo_pgsql`, `pgsql`, `zip`, and `sockets` PHP extensions | Docker |
 | `/docker-compose.yml` | Multi-service orchestration with service_healthy dependency | Docker Compose |
 | `/.env.example` | Root Compose host port template (NGINX_HOST_PORT) | Config |
 | `/backend/.env.example` | Sandbox environment template | Config |

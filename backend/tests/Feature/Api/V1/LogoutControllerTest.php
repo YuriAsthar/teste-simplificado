@@ -11,8 +11,6 @@ use Tests\TestCase;
 
 final class LogoutControllerTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_authenticated_user_can_logout_and_token_is_revoked(): void
     {
         $user = User::factory()->create();

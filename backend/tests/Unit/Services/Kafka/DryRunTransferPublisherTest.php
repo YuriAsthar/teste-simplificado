@@ -18,10 +18,10 @@ final class DryRunTransferPublisherTest extends TestCase
         $publisher = $this->createMock(TransferPublisherInterface::class);
         $publisher->expects($this->once())
             ->method('publish')
-            ->with('wallet.transfer.completed', ['foo' => 'bar'], 'txn_123');
+            ->with('wallet.transfer.completed', ['foo' => 'bar'], '42');
 
         $decorator = new DryRunTransferPublisher($context, $publisher);
-        $decorator->publish('wallet.transfer.completed', ['foo' => 'bar'], 'txn_123');
+        $decorator->publish('wallet.transfer.completed', ['foo' => 'bar'], '42');
     }
 
     public function test_records_when_context_enabled(): void
@@ -34,14 +34,14 @@ final class DryRunTransferPublisherTest extends TestCase
             ->method('publish');
 
         $decorator = new DryRunTransferPublisher($context, $publisher);
-        $decorator->publish('wallet.transfer.completed', ['foo' => 'bar'], 'txn_123');
+        $decorator->publish('wallet.transfer.completed', ['foo' => 'bar'], '42');
 
         $entries = $context->flush();
 
         $this->assertCount(1, $entries);
         $this->assertSame('kafka.publish', $entries[0]['action']);
         $this->assertSame('wallet.transfer.completed', $entries[0]['context']['topic']);
-        $this->assertSame('txn_123', $entries[0]['context']['key']);
+        $this->assertSame('42', $entries[0]['context']['key']);
         $this->assertSame(['foo' => 'bar'], $entries[0]['context']['payload']);
     }
 

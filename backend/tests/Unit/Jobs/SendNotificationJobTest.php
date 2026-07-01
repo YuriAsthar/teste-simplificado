@@ -9,14 +9,11 @@ use App\Exceptions\NotificationException;
 use App\Jobs\SendNotificationJob;
 use App\Models\Transfer;
 use App\Services\NotificationService;
-use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 final class SendNotificationJobTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_it_marks_transfer_notified_when_notification_succeeds(): void
     {
         Http::fake([

@@ -21,8 +21,6 @@ use Tests\TestCase;
 
 final class RelationalPaymentModelDodTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_cannot_create_two_active_users_with_same_document(): void
     {
         User::factory()->create([

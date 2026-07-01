@@ -15,8 +15,6 @@ use Tests\TestCase;
 
 final class NotificationServiceTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_it_sends_notification_with_success_response(): void
     {
         Http::fake([

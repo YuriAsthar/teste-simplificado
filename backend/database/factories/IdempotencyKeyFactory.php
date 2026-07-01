@@ -7,17 +7,17 @@ use App\Models\Transfer;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends Factory\u003cIdempotencyKey\u003e
+ * @extends Factory<IdempotencyKey>
  */
 class IdempotencyKeyFactory extends Factory
 {
     /**
-     * @var class-string\u003cIdempotencyKey\u003e
+     * @var class-string<IdempotencyKey>
      */
     protected $model = IdempotencyKey::class;
 
     /**
-     * @return array\u003cstring, mixed\u003e
+     * @return array<string, mixed>
      */
     public function definition(): array
     {

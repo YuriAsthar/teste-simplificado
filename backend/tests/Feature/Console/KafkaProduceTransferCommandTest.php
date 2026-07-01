@@ -11,8 +11,6 @@ use Tests\TestCase;
 
 final class KafkaProduceTransferCommandTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_publishes_transfer_message_to_kafka(): void
     {
         Kafka::fake();

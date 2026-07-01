@@ -12,11 +12,9 @@ use Tests\TestCase;
 
 final class TransferRetryPolicyTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_should_retry_returns_true_when_below_limit(): void
     {
-        $publisher = $this->mock(TransferPublisherInterface::class);
+        $publisher = $this->createFakePublisher();
         $policy = new TransferRetryPolicy($publisher);
 
         $this->assertTrue($policy->shouldRetry(0));
@@ -26,7 +24,7 @@ final class TransferRetryPolicyTest extends TestCase
 
     public function test_should_retry_returns_false_when_limit_reached(): void
     {
-        $publisher = $this->mock(TransferPublisherInterface::class);
+        $publisher = $this->createFakePublisher();
         $policy = new TransferRetryPolicy($publisher);
 
         $this->assertFalse($policy->shouldRetry(3));
@@ -37,25 +35,20 @@ final class TransferRetryPolicyTest extends TestCase
     {
         Carbon::setTestNow('2026-01-01 12:00:00');
 
-        $publisher = $this->mock(TransferPublisherInterface::class);
+        $publisher = $this->createFakePublisher();
         $policy = new TransferRetryPolicy($publisher);
 
-        $payload = ['transfer_id' => 'txn_123', 'payer_id' => 1];
+        $payload = ['transfer_id' => 123, 'payer_id' => 1];
 
-        $publisher->shouldReceive('publish')
-            ->once()
-            ->with(
-                'wallet.transfer.retry',
-                $this->callback(static function (array $envelope): bool {
-                    return $envelope['meta']['event'] === 'transfer.retry'
-                        && $envelope['meta']['retry']['attempt'] === 2
-                        && $envelope['meta']['reason'] === 'failed'
-                        && $envelope['payload']['transfer_id'] === 'txn_123';
-                }),
-                'txn_123'
-            );
+        $policy->publishRetry('123', $payload, 1, 'failed');
 
-        $policy->publishRetry('txn_123', $payload, 1, 'failed');
+        $this->assertCount(1, $publisher->published);
+        $this->assertSame('wallet.transfer.retry', $publisher->published[0]['topic']);
+        $this->assertSame('123', $publisher->published[0]['key']);
+        $this->assertSame('transfer.retry', $publisher->published[0]['envelope']['meta']['event']);
+        $this->assertSame(2, $publisher->published[0]['envelope']['meta']['retry']['attempt']);
+        $this->assertSame('failed', $publisher->published[0]['envelope']['meta']['reason']);
+        $this->assertSame(123, $publisher->published[0]['envelope']['payload']['transfer_id']);
 
         Carbon::setTestNow();
     }
@@ -64,24 +57,36 @@ final class TransferRetryPolicyTest extends TestCase
     {
         Carbon::setTestNow('2026-01-01 12:00:00');
 
-        $publisher = $this->mock(TransferPublisherInterface::class);
+        $publisher = $this->createFakePublisher();
         $policy = new TransferRetryPolicy($publisher);
 
-        $body = ['transfer_id' => 'txn_123'];
-
-        $publisher->shouldReceive('publish')
-            ->once()
-            ->with(
-                'wallet.transfer.dlq',
-                $this->callback(static function (array $envelope) use ($body): bool {
-                    return $envelope['meta']['event'] === 'transfer.failed'
-                        && $envelope['meta']['reason'] === 'bad request'
-                        && $envelope['payload'] === $body;
-                })
-            );
+        $body = ['transfer_id' => 123];
 
         $policy->publishDlq($body, 'bad request');
 
+        $this->assertCount(1, $publisher->published);
+        $this->assertSame('wallet.transfer.dlq', $publisher->published[0]['topic']);
+        $this->assertSame('transfer.failed', $publisher->published[0]['envelope']['meta']['event']);
+        $this->assertSame('bad request', $publisher->published[0]['envelope']['meta']['reason']);
+        $this->assertSame($body, $publisher->published[0]['envelope']['payload']);
+
         Carbon::setTestNow();
+    }
+
+    private function createFakePublisher(): object
+    {
+        return new class() implements TransferPublisherInterface {
+            /** @var list<array{topic: string, envelope: array<string, mixed>, key: string|null}> */
+            public array $published = [];
+
+            public function publish(string $topic, array $payload, ?string $key = null): void
+            {
+                $this->published[] = [
+                    'topic' => $topic,
+                    'envelope' => $payload,
+                    'key' => $key,
+                ];
+            }
+        };
     }
 }

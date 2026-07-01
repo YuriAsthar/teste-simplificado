@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console;
 
+use App\Enums\TransferStatus;
+use App\Models\Transfer;
+use App\Models\User;
 use App\Services\DryRun\DryRunContext;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Junges\Kafka\Facades\Kafka;
@@ -12,11 +15,16 @@ use Tests\TestCase;
 
 final class ConsumeRetryTransfersCommandTest extends TestCase
 {
-    use LazilyRefreshDatabase;
-
     public function test_dry_run_enables_context_and_records_retry_wait_skipped(): void
     {
         Kafka::fake();
+
+        $transfer = Transfer::factory()->create([
+            'payer_id' => User::factory()->create()->id,
+            'payee_id' => User::factory()->create()->id,
+            'amount' => 1000,
+            'status' => TransferStatus::Completed,
+        ]);
 
         $message = [
             'meta' => [
@@ -29,10 +37,10 @@ final class ConsumeRetryTransfersCommandTest extends TestCase
                 ],
             ],
             'payload' => [
-                'transfer_id' => 'txn_retry_dry_1',
-                'payer_id' => 1,
-                'payee_id' => 2,
-                'amount' => 1000,
+                'transfer_id' => $transfer->id,
+                'payer_id' => $transfer->payer_id,
+                'payee_id' => $transfer->payee_id,
+                'amount' => $transfer->amount,
             ],
         ];
 
@@ -42,7 +50,7 @@ final class ConsumeRetryTransfersCommandTest extends TestCase
                 partition: 0,
                 headers: [],
                 body: $message,
-                key: 'txn_retry_dry_1',
+                key: (string) $transfer->id,
                 offset: 1,
                 timestamp: time(),
             ),
@@ -60,6 +68,13 @@ final class ConsumeRetryTransfersCommandTest extends TestCase
     {
         Kafka::fake();
 
+        $transfer = Transfer::factory()->create([
+            'payer_id' => User::factory()->create()->id,
+            'payee_id' => User::factory()->create()->id,
+            'amount' => 1000,
+            'status' => TransferStatus::Completed,
+        ]);
+
         $message = [
             'meta' => [
                 'version' => '1.0',
@@ -71,10 +86,10 @@ final class ConsumeRetryTransfersCommandTest extends TestCase
                 ],
             ],
             'payload' => [
-                'transfer_id' => 'txn_retry_live_1',
-                'payer_id' => 1,
-                'payee_id' => 2,
-                'amount' => 1000,
+                'transfer_id' => $transfer->id,
+                'payer_id' => $transfer->payer_id,
+                'payee_id' => $transfer->payee_id,
+                'amount' => $transfer->amount,
             ],
         ];
 
@@ -84,7 +99,7 @@ final class ConsumeRetryTransfersCommandTest extends TestCase
                 partition: 0,
                 headers: [],
                 body: $message,
-                key: 'txn_retry_live_1',
+                key: (string) $transfer->id,
                 offset: 1,
                 timestamp: time(),
             ),

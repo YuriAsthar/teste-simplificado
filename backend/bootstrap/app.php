@@ -4,6 +4,7 @@ use App\Exceptions\AuthorizerRejectedException;
 use App\Exceptions\IdempotencyKeyFingerprintMismatchException;
 use App\Exceptions\IdempotencyKeyInProgressException;
 use App\Exceptions\TransientAuthorizerException;
+use App\Support\DatabaseErrorResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Application;
@@ -11,10 +12,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
-// use PDOException; // global namespace, cannot be imported in root namespace
-// use Throwable; // global namespace, cannot be imported in root namespace
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         // API-only application. Web routes exist only for the root health check.
@@ -116,7 +114,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 $code = $exception->getPrevious()->getCode();
             }
 
-            return databaseErrorResponse($code, $request, $exception);
+            return DatabaseErrorResponse::make($code, $request, $exception);
         });
 
         $exceptions->renderable(function (\PDOException $exception, Request $request): ?JsonResponse {
@@ -124,49 +122,6 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            return databaseErrorResponse($exception->getCode(), $request, $exception);
+            return DatabaseErrorResponse::make($exception->getCode(), $request, $exception);
         });
     })->create();
-
-function databaseErrorResponse(string|int $sqlState, Request $request, \Throwable $exception): JsonResponse
-{
-    $sqlState = (string) $sqlState;
-
-    $sqlState = str_pad($sqlState, 5, '0', STR_PAD_LEFT);
-
-    $isConnectionError = str_starts_with($sqlState, '08');
-    $isUniqueViolation = $sqlState === '23505';
-    $isForeignKeyViolation = $sqlState === '23503';
-    $isCheckViolation = $sqlState === '23514';
-    $isNotNullViolation = $sqlState === '23502';
-
-    if ($isConnectionError) {
-        Log::error('Database connection failed', [
-            'path' => $request->getPathInfo(),
-            'sql_state' => $sqlState,
-        ]);
-
-        return response()->json([
-            'message' => 'Service temporarily unavailable. Please try again later.',
-            'code' => 'database_connection_error',
-        ], 503);
-    }
-
-    if ($isUniqueViolation || $isForeignKeyViolation || $isCheckViolation || $isNotNullViolation) {
-        return response()->json([
-            'message' => 'The provided data is invalid or conflicts with an existing record.',
-            'code' => 'database_constraint_violation',
-        ], 422);
-    }
-
-    Log::error('Database error', [
-        'path' => $request->getPathInfo(),
-        'sql_state' => $sqlState,
-        'exception' => get_class($exception),
-    ]);
-
-    return response()->json([
-        'message' => 'An internal error occurred. Please try again later.',
-        'code' => 'internal_error',
-    ], 500);
-}

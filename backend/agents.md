@@ -28,6 +28,7 @@ Laravel 13 API-only wallet/transfer application. It exposes a JSON API for authe
 | `config/` | Configuration files including services.php and sanctum.php. | PHP |
 | `database/factories/` | Model factories. | PHP |
 | `database/migrations/` | Database migrations. | PHP |
+| `database/migrations/2026_07_02_400000_normalize_document_values.php` | Backfills legacy CPF/CNPJ `document_value` records to canonical form. | PHP |
 | `routes/api.php` | API routes (served under `/api/v1`). | PHP |
 | `routes/web.php` | Minimal JSON health-check route only. | PHP |
 | `tests/` | PHPUnit unit and feature tests. | Directory |
@@ -50,7 +51,7 @@ Laravel 13 API-only wallet/transfer application. It exposes a JSON API for authe
 - External HTTP clients (AuthorizerClient, NotificationClient) use `Http::timeout()`; AuthorizerClient returns an `AuthorizerResult` enum (`Authorized`, `Rejected`, `Transient`) instead of throwing on transient responses.
 - AuthorizerClient retries only on `ConnectionException` with a single exponential backoff.
 - API-only: no Blade views, web login routes, dashboard, query-string tokens, or session/cookie auth.
-- Authentication is stateless via Sanctum bearer tokens: obtain a token at `POST /api/v1/auth/login`, then send `Authorization: Bearer <token>`. New accounts are created at `POST /api/v1/auth/register` (public route), which also returns a bearer token. Registration accepts an optional `type` (`common` or `merchant`) and three required document fields: `document_country` (3-letter ISO code), `document_type` (Stripe-standard tax ID code), and `document_value`. The provided document type must be valid for the given country and is validated against `DocumentType`. For Brazilian documents, `document_value` is now algorithmically validated: `br_cpf` must be a valid CPF and `br_cnpj` must be a valid CNPJ. Both formatted (e.g. `529.982.247-25`, `11.222.333/0001-81`) and unformatted values are accepted during validation; the value is stored exactly as submitted.
+- Authentication is stateless via Sanctum bearer tokens: obtain a token at `POST /api/v1/auth/login`, then send `Authorization: Bearer <token>`. New accounts are created at `POST /api/v1/auth/register` (public route), which also returns a bearer token. Registration accepts an optional `type` (`common` or `merchant`) and three required document fields: `document_country` (3-letter ISO code), `document_type` (Stripe-standard tax ID code), and `document_value`. The provided document type must be valid for the given country and is validated against `DocumentType`. For Brazilian documents, `document_value` is algorithmically validated: `br_cpf` must be a valid CPF and `br_cnpj` must be a valid CNPJ. Both formatted (e.g. `529.982.247-25`, `11.222.333/0001-81`) and unformatted values are accepted during validation; the value is stored exactly as submitted. The `2026_07_02_400000_normalize_document_values` migration backfills legacy records to canonical form.
 
 ## Cache / QA Tool Artifacts
 - The following tool caches are ignored and must not be committed:
@@ -82,8 +83,8 @@ docker compose run --rm app composer test
 ## Setup
 - Copy `/.env.example` to `/.env` to configure the Nginx host port (`NGINX_HOST_PORT`, default 8080).
 - Copy `/backend/.env.example` to `/backend/.env` and run `docker compose run --rm app php artisan key:generate`.
-- Fix volume ownership with `docker compose run --rm --user root app chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache`.
 - All Docker commands use `docker compose run --rm` (never exec).
+- Manual volume ownership fix is unnecessary; the Dockerfile already chowns storage/cache to `www-data`.
 
 ## Related
 - Parent: ../agents.md

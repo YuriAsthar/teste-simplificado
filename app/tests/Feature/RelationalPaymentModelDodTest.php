@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Casts\MoneyCast;
 use App\Enums\CurrencyType;
+use App\Enums\DocumentType;
 use App\Enums\FailureReason;
 use App\Enums\TransferStatus;
 use App\Models\Transfer;
@@ -26,7 +27,7 @@ final class RelationalPaymentModelDodTest extends TestCase
     {
         User::factory()->create([
             'document_country' => 'BRA',
-            'document_type' => 'cpf',
+            'document_type' => DocumentType::BrCpf->value,
             'document_value' => '12345678901',
         ]);
 
@@ -34,7 +35,7 @@ final class RelationalPaymentModelDodTest extends TestCase
 
         User::factory()->create([
             'document_country' => 'BRA',
-            'document_type' => 'cpf',
+            'document_type' => DocumentType::BrCpf->value,
             'document_value' => '12345678901',
         ]);
     }
@@ -43,7 +44,7 @@ final class RelationalPaymentModelDodTest extends TestCase
     {
         $user = User::factory()->create([
             'document_country' => 'BRA',
-            'document_type' => 'cpf',
+            'document_type' => DocumentType::BrCpf->value,
             'document_value' => '12345678901',
         ]);
 
@@ -51,7 +52,7 @@ final class RelationalPaymentModelDodTest extends TestCase
 
         $recreated = User::factory()->create([
             'document_country' => 'BRA',
-            'document_type' => 'cpf',
+            'document_type' => DocumentType::BrCpf->value,
             'document_value' => '12345678901',
         ]);
 

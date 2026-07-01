@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\DocumentType;
 use App\Enums\UserType;
 use App\Events\UserCreated;
 use Database\Factories\UserFactory;
@@ -33,6 +34,7 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
             'type' => UserType::class,
+            'document_type' => DocumentType::class,
         ];
     }
 

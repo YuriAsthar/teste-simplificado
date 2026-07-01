@@ -8,7 +8,7 @@ Laravel 13 sandbox application implementing a relational wallet/transfer payment
 |-------------|---------|------|
 | `app/Casts/` | Custom Eloquent casts (e.g. MoneyCast). | PHP |
 | `app/Console/Commands/` | Artisan operational commands. | PHP |
-| `app/Enums/` | Backed enums: CurrencyType, UserType, DocumentType, TransferStatus, FailureReason. | PHP |
+| `app/Enums/` | Backed enums: CurrencyType, UserType, DocumentType (Stripe-standard tax IDs), TransferStatus, FailureReason. | PHP |
 | `app/Events/` | Domain events (UserCreated). | PHP |
 | `app/Http/Controllers/Api/V1/` | API controllers: TokenController, TransferController. | PHP |
 | `app/Http/Requests/` | FormRequest validation classes. | PHP |

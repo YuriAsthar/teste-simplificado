@@ -31,7 +31,7 @@ class UserFactory extends Factory
             'password' => 'password',
             'type' => UserType::Common->value,
             'document_country' => 'BRA',
-            'document_type' => DocumentType::Cpf->value,
+            'document_type' => DocumentType::BrCpf->value,
             'document_value' => fake()->unique()->numerify('###########'),
         ];
     }

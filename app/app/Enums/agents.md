@@ -5,7 +5,7 @@ Backed enums representing domain values and status/lifecycle concepts.
 
 ## Files
 - `CurrencyType.php` — Supported wallet currencies (`BRA`, `USD`, `EUR`).
-- `DocumentType.php` — Document kinds accepted for user identity (`cpf`, `cnpj`, passport, driver license, national id).
+- `DocumentType.php` — Stripe-standard tax ID codes by region (Americas, Europe/EU, Asia-Pacific, Middle East/Africa), with `values()` and `allowedForCountry()` helpers and Eloquent cast support.
 - `FailureReason.php` — Reasons a transfer can fail (`insufficient_funds`, `payer_not_found`, `payee_not_found`, `invalid_amount`, `currency_mismatch`, `wallet_locked`, `idempotency_conflict`, `same_payer_and_payee`, `payer_is_merchant`, `wallet_inactive`, `authorizer_rejected`, `unknown`).
 - `TransferStatus.php` — Transfer lifecycle states (`pending`, `authorized`, `completed`, `failed`, `cancelled`, `refunded`) with transition rules.
 - `UserType.php` — User roles (`common`, `merchant`).

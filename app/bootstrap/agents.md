@@ -9,7 +9,7 @@ Application bootstrap for the Laravel 13 API-only wallet/transfer application.
 
 ## Conventions
 - Exception rendering is JSON-only for `api/*` requests.
-- Domain exceptions (`IdempotencyKeyInProgressException`, `IdempotencyKeyFingerprintMismatchException`, `TransientAuthorizerException`) are registered as `renderable` callbacks with stable `code` strings and appropriate HTTP status codes.
+- Domain exceptions (`IdempotencyKeyInProgressException`, `IdempotencyKeyFingerprintMismatchException`, `TransientAuthorizerException`, `AuthorizerRejectedException`) are registered as `renderable` callbacks with stable `code` strings and appropriate HTTP status codes.
 - No web/Blade frontend is wired into the bootstrap.
 
 ## Related

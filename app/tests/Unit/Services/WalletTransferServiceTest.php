@@ -10,6 +10,7 @@ use App\Enums\FailureReason;
 use App\Enums\IdempotencyKeyStatus;
 use App\Enums\TransferStatus;
 use App\Enums\UserType;
+use App\Exceptions\AuthorizerRejectedException;
 use App\Exceptions\IdempotencyKeyFingerprintMismatchException;
 use App\Exceptions\IdempotencyKeyInProgressException;
 use App\Exceptions\TransientAuthorizerException;
@@ -145,12 +146,15 @@ final class WalletTransferServiceTest extends TestCase
         $this->assertSame(FailureReason::CurrencyMismatch, $transfer->failure_reason);
     }
 
-    public function test_it_fails_when_authorizer_rejects(): void
+    public function test_it_throws_authorizer_rejected_exception_and_deletes_processing_key(): void
     {
         $payer = User::factory()->create();
         $payee = User::factory()->create();
 
         $payer->wallet->forceFill(['balance' => 10000])->save();
+
+        $expectedPayerBalance = (int) $payer->fresh()?->wallet->getRawOriginal('balance');
+        $expectedPayeeBalance = (int) $payee->fresh()?->wallet->getRawOriginal('balance');
 
         $this->authorizer->shouldReceive('authorize')
             ->once()
@@ -163,9 +167,18 @@ final class WalletTransferServiceTest extends TestCase
             $this->logger,
         );
 
-        $transfer = $service->execute($payer->id, $payee->id, 1000, 'key-5');
-
-        $this->assertSame(FailureReason::AuthorizerRejected, $transfer->failure_reason);
+        try {
+            $service->execute($payer->id, $payee->id, 1000, 'key-5');
+            $this->fail('Expected AuthorizerRejectedException to be thrown.');
+        } catch (AuthorizerRejectedException) {
+            $this->assertDatabaseCount('transfers', 0);
+            $this->assertDatabaseMissing('idempotency_keys', [
+                'key' => 'key-5',
+                'status' => IdempotencyKeyStatus::Processing->value,
+            ]);
+            $this->assertSame($expectedPayerBalance, (int) $payer->fresh()?->wallet->getRawOriginal('balance'));
+            $this->assertSame($expectedPayeeBalance, (int) $payee->fresh()?->wallet->getRawOriginal('balance'));
+        }
     }
 
     public function test_it_returns_existing_transfer_for_duplicate_idempotency_key(): void

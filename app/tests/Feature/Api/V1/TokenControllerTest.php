@@ -16,7 +16,7 @@ final class TokenControllerTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->postJson('/api/auth/token', [
+        $response = $this->postJson('/api/v1/auth/token', [
             'email' => $user->email,
             'password' => 'password',
         ]);
@@ -32,7 +32,7 @@ final class TokenControllerTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $response = $this->postJson('/api/auth/token', [
+        $response = $this->postJson('/api/v1/auth/token', [
             'email' => $user->email,
             'password' => 'wrong-password',
         ]);
@@ -43,7 +43,7 @@ final class TokenControllerTest extends TestCase
 
     public function test_it_requires_email_and_password(): void
     {
-        $response = $this->postJson('/api/auth/token', []);
+        $response = $this->postJson('/api/v1/auth/token', []);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['email', 'password']);

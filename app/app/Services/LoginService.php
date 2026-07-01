@@ -12,7 +12,7 @@ final readonly class LoginService
 {
     public function issueToken(string $email, string $password): ?NewAccessToken
     {
-        if (!Auth::attempt(['email' => $email, 'password' => $password])) {
+        if (!Auth::guard('web')->validate(['email' => $email, 'password' => $password])) {
             return null;
         }
 

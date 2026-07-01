@@ -10,8 +10,9 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 | `/docker` | Docker configurations | Directory |
 | `/docker/nginx/default.conf` | Nginx server configuration | Config |
 | `/docker/init-multi-db.sql` | Database initialization script | SQL |
-| `/Dockerfile` | PHP 8.4-FPM container definition | Docker |
-| `/docker-compose.yml` | Multi-service orchestration | Docker Compose |
+| `/Dockerfile` | PHP 8.4-FPM container definition with PHP-FPM healthcheck support | Docker |
+| `/docker-compose.yml` | Multi-service orchestration with service_healthy dependency | Docker Compose |
+| `/.env.example` | Root Compose host port template (NGINX_HOST_PORT) | Config |
 | `/app/.env.example` | Sandbox environment template | Config |
 | `/app/.env.testing` | Testing environment config | Config |
 | `/app/ecs.php` | EasyCodingStandard configuration | Config |
@@ -23,7 +24,7 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 
 ## Services
 - **app**: PHP 8.4-FPM with Laravel 13
-- **web**: Nginx reverse proxy (port 8080)
+- **web**: Nginx reverse proxy (configurable host port via `NGINX_HOST_PORT`, default 8080)
 - **db**: PostgreSQL 16 (port 6432)
 - **redis**: Redis 7 (port 7379)
 - **rabbitmq**: RabbitMQ 3 Management (ports 6672, 16672)
@@ -35,6 +36,13 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 - Laravel runs as www-data user
 - Database migrations use healthcheck dependency
 - Alternative ports used to avoid conflicts (64xx, 73xx, 66xx, 166xx, 10092)
+
+## Setup
+1. Copy root `.env.example` to `.env` to set `NGINX_HOST_PORT` (default 8080).
+2. Copy `/app/.env.example` to `/app/.env` and generate an `APP_KEY`.
+3. Start stack with `docker compose up -d --build`.
+4. Fix volume ownership: `docker compose run --rm --user root app chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache`.
+5. Run migrations: `docker compose run --rm app php artisan migrate --force`.
 
 ## Commands
 ```bash
@@ -59,6 +67,11 @@ docker compose run --rm app composer phpmd
 # CI note: GitHub Actions runs the same composer scripts natively on the runner
 # using shivammathur/setup-php + ramsey/composer-install (standard Laravel pattern).
 ```
+
+## API Versioning
+- The application is API-only: no Blade/web frontend, dashboard, login pages, query-string tokens, or session/cookie auth.
+- All API endpoints are under `/api/v1`.
+- Authentication is stateless via Sanctum bearer tokens: `POST /api/v1/auth/token` issues tokens; protected routes require `Authorization: Bearer <token>`.
 
 ## Related
 - Child: /app/agents.md

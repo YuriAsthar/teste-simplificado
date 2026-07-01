@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Jobs\SendTransferNotificationJob;
+use App\Jobs\SendNotificationJob;
 use App\Models\Transfer;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Bus\Dispatcher;
@@ -29,7 +29,7 @@ final class RetryNotificationsCommand extends Command
             ->pendingNotification()
             ->chunkById(100, static function ($transfers) use ($dispatcher, &$count): void {
                 foreach ($transfers as $transfer) {
-                    $dispatcher->dispatch(new SendTransferNotificationJob($transfer->getKey()));
+                    $dispatcher->dispatch(new SendNotificationJob($transfer->getKey()));
                     ++$count;
                 }
             });

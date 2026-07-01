@@ -51,7 +51,7 @@ parameters:
 		-
 			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
 			identifier: method.notFound
-			count: 10
+			count: 6
 			path: tests/Unit/Services/WalletTransferServiceTest.php
 
 		-
@@ -61,13 +61,7 @@ parameters:
 			path: tests/Unit/Services/WalletTransferServiceTest.php
 
 		-
-			message: '#^Parameter \#2 \$dispatcher of class App\\Services\\WalletTransferService constructor expects Illuminate\\Contracts\\Bus\\Dispatcher, Mockery\\MockInterface given\.$#'
-			identifier: argument.type
-			count: 14
-			path: tests/Unit/Services/WalletTransferServiceTest.php
-
-		-
-			message: '#^Parameter \#4 \$logger of class App\\Services\\WalletTransferService constructor expects Psr\\Log\\LoggerInterface, Mockery\\MockInterface given\.$#'
+			message: '#^Parameter \#3 \$logger of class App\\Services\\WalletTransferService constructor expects Psr\\Log\\LoggerInterface, Mockery\\MockInterface given\.$#'
 			identifier: argument.type
 			count: 14
 			path: tests/Unit/Services/WalletTransferServiceTest.php

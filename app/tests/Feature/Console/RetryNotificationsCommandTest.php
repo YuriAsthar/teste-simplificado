@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Console;
 
 use App\Enums\TransferStatus;
-use App\Jobs\SendTransferNotificationJob;
+use App\Jobs\SendNotificationJob;
 use App\Models\Transfer;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Queue;
@@ -38,7 +38,7 @@ final class RetryNotificationsCommandTest extends TestCase
             ->assertSuccessful()
             ->expectsOutput('Dispatched 1 notification retry jobs.');
 
-        Queue::assertPushed(SendTransferNotificationJob::class, function ($job) use ($completedTransfer): bool {
+        Queue::assertPushed(SendNotificationJob::class, function ($job) use ($completedTransfer): bool {
             return $job->transferId === $completedTransfer->getKey();
         });
     }

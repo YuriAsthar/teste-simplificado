@@ -10,14 +10,14 @@ Laravel 13 API-only wallet/transfer application. It exposes a JSON API for authe
 | `app/Console/Commands/` | Artisan operational commands. | PHP |
 | `app/Enums/` | Backed enums: CurrencyType, UserType, DocumentType (Stripe-standard tax IDs), TransferStatus, FailureReason, IdempotencyKeyStatus, AuthorizerResult. | PHP |
 | `app/Events/` | Domain events (UserCreated). | PHP |
-| `app/Exceptions/` | Domain HTTP exceptions: `IdempotencyKeyInProgressException`, `IdempotencyKeyFingerprintMismatchException`, `TransientAuthorizerException`. | PHP |
+| `app/Exceptions/` | Domain HTTP exceptions: `IdempotencyKeyInProgressException`, `IdempotencyKeyFingerprintMismatchException`, `TransientAuthorizerException`, `NotificationException`. | PHP |
 | `app/Http/Controllers/Api/V1/` | API controllers: TokenController, TransferController. | PHP |
 | `app/Http/Requests/` | FormRequest validation classes. | PHP |
-| `app/Jobs/` | Queueable notification jobs. | PHP |
+| `app/Jobs/` | Queueable notification jobs (`SendNotificationJob`). | PHP |
 | `app/Listeners/` | Event listeners (CreateUserWallet). | PHP |
 | `app/Models/` | Eloquent models: User, Wallet, Transfer, IdempotencyKey. | PHP |
 | `app/Providers/` | Service providers. | PHP |
-| `app/Services/` | Business-logic services including AuthorizerClient, NotificationClient, LoginService, WalletTransferService, IdempotencyKeyService, and Kafka/RabbitMQ messaging services. | PHP |
+| `app/Services/` | Business-logic services including AuthorizerClient, NotificationService, LoginService, WalletTransferService, IdempotencyKeyService, and Kafka/RabbitMQ messaging services. | PHP |
 | `app/Support/` | Domain helpers (e.g. MoneyParser). | PHP |
 | `config/transfer.php` | Transfer-specific configuration (idempotency processing TTL). | PHP |
 | `bootstrap/app.php` | Application bootstrap (API-only routing setup). | PHP |

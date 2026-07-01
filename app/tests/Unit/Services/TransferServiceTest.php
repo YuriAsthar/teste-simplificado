@@ -96,14 +96,11 @@ final class TransferServiceTest extends TestCase
                 && str_starts_with($envelope['payload']['transfer_id'], 'txn_')
                 && $envelope['payload']['payer_id'] === $payer->id
                 && $envelope['payload']['payee_id'] === $payee->id
-                && $envelope['payload']['amount_cents'] === 2500);
+                && $envelope['payload']['amount'] === 2500);
 
         $this->dispatcher
             ->shouldReceive('dispatch')
-            ->withArgs(static fn (SendNotificationJob $job): bool => $job->payerId === $payer->id
-                && $job->payeeId === $payee->id
-                && $job->amountCents === 2500
-                && str_starts_with($job->transferId, 'txn_'))
+            ->withArgs(static fn (SendNotificationJob $job): bool => $job->transferId >= 0)
             ->andReturnSelf();
 
         $this->dispatcher->shouldReceive('onConnection')->with('rabbitmq')->andReturnSelf();

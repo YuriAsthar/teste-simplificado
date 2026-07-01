@@ -4,34 +4,53 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\FailureReason;
 use App\Http\Controllers\Controller;
-use App\Services\TransferService;
+use App\Http\Requests\CreateTransferRequest;
+use App\Models\User;
+use App\Services\WalletTransferService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
+/**
+ * @SuppressWarnings("PHPMD.StaticAccess")
+ */
 final class TransferController extends Controller
 {
     public function __construct(
-        private readonly TransferService $transferService,
+        private readonly WalletTransferService $service,
     ) {
     }
 
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(CreateTransferRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'payer_id' => ['required', 'integer', 'exists:users,id'],
-            'payee_id' => ['required', 'integer', 'exists:users,id'],
-            'amount_cents' => ['required', 'integer', 'min:1'],
-        ]);
+        $authenticatedUser = $request->user();
+        $payerId = (int) $request->validated('payer');
 
-        $result = $this->transferService->authorizeAndExecuteTransfer(
-            $validated['payer_id'],
-            $validated['payee_id'],
-            $validated['amount_cents'],
+        if ($authenticatedUser instanceof User && $authenticatedUser->id !== $payerId) {
+            return response()->json([
+                'message' => __('auth.failed'),
+            ], 403);
+        }
+
+        $transfer = $this->service->execute(
+            $payerId,
+            (int) $request->validated('payee'),
+            $request->amountCents(),
+            $request->idempotencyKey(),
         );
 
+        $statusCode = $transfer->status->isFailed()
+            && $transfer->failure_reason !== FailureReason::SamePayerAndPayee
+            && $transfer->failure_reason !== FailureReason::InvalidAmount
+            ? 422
+            : 201;
+
         return response()->json([
-            'data' => $result,
-        ], 201);
+            'data' => [
+                'id' => $transfer->id,
+                'status' => $transfer->status->value,
+                'failure_reason' => $transfer->failure_reason?->value,
+            ],
+        ], $statusCode);
     }
 }

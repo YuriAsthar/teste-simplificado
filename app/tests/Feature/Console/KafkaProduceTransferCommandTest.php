@@ -20,7 +20,7 @@ final class KafkaProduceTransferCommandTest extends TestCase
         $this->artisan('kafka:produce-transfer', [
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ])
             ->assertSuccessful();
 
@@ -34,7 +34,7 @@ final class KafkaProduceTransferCommandTest extends TestCase
         $this->artisan('kafka:produce-transfer', [
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
             '--dry-run' => true,
         ])
             ->assertSuccessful()
@@ -51,7 +51,7 @@ final class KafkaProduceTransferCommandTest extends TestCase
         $this->artisan('kafka:produce-transfer', [
             'payer_id' => 0,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ])
             ->assertFailed();
 

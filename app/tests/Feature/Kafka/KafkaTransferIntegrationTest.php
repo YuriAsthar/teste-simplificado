@@ -33,7 +33,7 @@ final class KafkaTransferIntegrationTest extends KafkaTestCase
             'transfer_id' => $transferId,
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 5000,
+            'amount' => 5000,
             'occurred_at' => now()->toIso8601String(),
         ];
 
@@ -53,7 +53,7 @@ final class KafkaTransferIntegrationTest extends KafkaTestCase
         $this->assertSame($transferId, $consumed['body']['payload']['transfer_id']);
         $this->assertSame(1, $consumed['body']['payload']['payer_id']);
         $this->assertSame(2, $consumed['body']['payload']['payee_id']);
-        $this->assertSame(5000, $consumed['body']['payload']['amount_cents']);
+        $this->assertSame(5000, $consumed['body']['payload']['amount']);
     }
 
     public function test_consumer_skips_duplicate_transfer_id(): void
@@ -63,7 +63,7 @@ final class KafkaTransferIntegrationTest extends KafkaTestCase
             'transfer_id' => $transferId,
             'payer_id' => 3,
             'payee_id' => 4,
-            'amount_cents' => 2500,
+            'amount' => 2500,
             'occurred_at' => now()->toIso8601String(),
         ];
 
@@ -116,7 +116,7 @@ final class KafkaTransferIntegrationTest extends KafkaTestCase
             'payload' => [
                 'payer_id' => 5,
                 'payee_id' => 6,
-                'amount_cents' => 1000,
+                'amount' => 1000,
             ],
         ];
 

@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Models\Transfer;
+use App\Services\NotificationClient;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Psr\Log\LoggerInterface;
+use Illuminate\Support\Facades\Log;
 
 final class SendNotificationJob implements ShouldQueue
 {
@@ -21,20 +23,32 @@ final class SendNotificationJob implements ShouldQueue
     public int $tries = 3;
 
     public function __construct(
-        public readonly int $payerId,
-        public readonly int $payeeId,
-        public readonly int $amountCents,
-        public readonly string $transferId,
+        public readonly int $transferId,
     ) {
     }
 
-    public function handle(LoggerInterface $logger): void
+    public function handle(NotificationClient $client): void
     {
-        $logger->info('Sending transfer notification', [
+        $transfer = Transfer::query()
+            ->with(['payer.wallet', 'payee.wallet'])
+            ->find($this->transferId);
+
+        if (is_null($transfer)) {
+            Log::warning('Transfer not found for notification.', [
+                'transfer_id' => $this->transferId,
+            ]);
+
+            return;
+        }
+
+        if ($client->notify()) {
+            $transfer->forceFill(['notified_at' => now()])->save();
+
+            return;
+        }
+
+        Log::warning('Notification service returned non-success.', [
             'transfer_id' => $this->transferId,
-            'payer_id' => $this->payerId,
-            'payee_id' => $this->payeeId,
-            'amount_cents' => $this->amountCents,
         ]);
     }
 }

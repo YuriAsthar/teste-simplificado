@@ -30,11 +30,16 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
-    'slack' => [
-        'notifications' => [
-            'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
-            'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
-        ],
+    'authorizer' => [
+        'url' => env('AUTHORIZER_URL', 'https://util.devi.tools/api/v2/authorize'),
+        'timeout' => (int) env('AUTHORIZER_TIMEOUT', 10),
+        'retry_times' => (int) env('AUTHORIZER_RETRY_TIMES', 2),
+        'retry_backoff_ms' => (int) env('AUTHORIZER_RETRY_BACKOFF_MS', 2000),
+    ],
+
+    'notifier' => [
+        'url' => env('NOTIFIER_URL', 'https://util.devi.tools/api/v1/notify'),
+        'timeout' => (int) env('NOTIFIER_TIMEOUT', 10),
     ],
 
 ];

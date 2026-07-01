@@ -32,7 +32,7 @@ final class ConsumeRetryTransfersCommandTest extends TestCase
                 'transfer_id' => 'txn_retry_dry_1',
                 'payer_id' => 1,
                 'payee_id' => 2,
-                'amount_cents' => 1000,
+                'amount' => 1000,
             ],
         ];
 
@@ -74,7 +74,7 @@ final class ConsumeRetryTransfersCommandTest extends TestCase
                 'transfer_id' => 'txn_retry_live_1',
                 'payer_id' => 1,
                 'payee_id' => 2,
-                'amount_cents' => 1000,
+                'amount' => 1000,
             ],
         ];
 

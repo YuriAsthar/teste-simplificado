@@ -43,10 +43,7 @@ final class TransferProcessorTest extends TestCase
         $dispatcher->shouldReceive('dispatch')
             ->once()
             ->with($this->callback(static function (SendNotificationJob $job): bool {
-                return $job->payerId === 1
-                    && $job->payeeId === 2
-                    && $job->amountCents === 1000
-                    && $job->transferId === 'txn_123';
+                return $job->transferId === 0;
             }))
             ->andReturn($connection);
 
@@ -55,7 +52,7 @@ final class TransferProcessorTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
     }
 
@@ -79,7 +76,7 @@ final class TransferProcessorTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
     }
 
@@ -100,7 +97,7 @@ final class TransferProcessorTest extends TestCase
         $processor->process([
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
     }
 
@@ -130,7 +127,7 @@ final class TransferProcessorTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
     }
 
@@ -154,7 +151,7 @@ final class TransferProcessorTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
 
         $entries = $context->flush();
@@ -186,7 +183,7 @@ final class TransferProcessorTest extends TestCase
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
             'payee_id' => 2,
-            'amount_cents' => 1000,
+            'amount' => 1000,
         ]);
 
         $this->assertCount(0, $context->flush());

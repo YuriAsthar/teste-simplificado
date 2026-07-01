@@ -13,3 +13,33 @@ parameters:
 			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
 			identifier: method.notFound
 			path: tests
+		-
+			message: '#^Parameter \#1 \$authorizer of class App\\Services\\WalletTransferService constructor expects App\\Services\\AuthorizerClient, Mockery\\MockInterface given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/Unit/Services/WalletTransferServiceTest.php
+		-
+			message: '#^Parameter \#2 \$dispatcher of class App\\Services\\WalletTransferService constructor expects Illuminate\\Contracts\\Bus\\Dispatcher, Mockery\\MockInterface given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/Unit/Services/WalletTransferServiceTest.php
+		-
+			message: '#^Parameter \#3 \$logger of class App\\Services\\WalletTransferService constructor expects Psr\\Log\\LoggerInterface, Mockery\\MockInterface given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/Unit/Services/WalletTransferServiceTest.php
+		-
+			message: '#^Parameter \#1 \$authorizer of class App\\Services\\WalletTransferService constructor expects App\\Services\\AuthorizerClient, Mockery\\MockInterface given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/Unit/Services/WalletTransferServiceTest.php
+		-
+			message: '#^Parameter \#2 \$dispatcher of class App\\Services\\WalletTransferService constructor expects Illuminate\\Contracts\\Bus\\Dispatcher, Mockery\\MockInterface given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/Unit/Services/WalletTransferServiceTest.php
+		-
+			message: '#^Parameter \#3 \$logger of class App\\Services\\WalletTransferService constructor expects Psr\\Log\\LoggerInterface, Mockery\\MockInterface given\.$#'
+			identifier: argument.type
+			count: 3
+			path: tests/Unit/Services/WalletTransferServiceTest.php

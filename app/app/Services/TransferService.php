@@ -54,15 +54,16 @@ final readonly class TransferService
             'transfer_id' => $transferId,
             'payer_id' => $payerId,
             'payee_id' => $payeeId,
-            'amount_cents' => $amountCents,
+            'amount' => $amountCents,
             'occurred_at' => now()->toIso8601String(),
         ];
 
         $message = $this->messageBuilder->build($payload);
         $this->publisher->publish($message['topic'], $message['envelope'], $message['key']);
 
+        $numericTransferId = (int) $transferId;
         $this->dispatcher->dispatch(
-            new SendNotificationJob($payerId, $payeeId, $amountCents, $transferId)
+            new SendNotificationJob($numericTransferId)
         )->onConnection('rabbitmq');
 
         $this->invalidateUserCache($payerId);
@@ -72,7 +73,7 @@ final readonly class TransferService
             'transfer_id' => $transferId,
             'payer_id' => $payerId,
             'payee_id' => $payeeId,
-            'amount_cents' => $amountCents,
+            'amount' => $amountCents,
         ]);
 
         return [

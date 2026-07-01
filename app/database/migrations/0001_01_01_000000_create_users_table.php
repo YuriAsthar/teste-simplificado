@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -15,11 +16,20 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->rememberToken();
+            $table->string('type');
+            $table->char('document_country', 3);
+            $table->string('document_type');
+            $table->string('document_value');
             $table->timestamps();
+            $table->softDeletes();
+
+            $table->index('type');
         });
+
+        DB::statement(
+            'CREATE UNIQUE INDEX idx_users_document_unique ON users (document_country, document_type, document_value) WHERE deleted_at IS NULL'
+        );
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();

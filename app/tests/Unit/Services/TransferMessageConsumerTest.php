@@ -8,8 +8,8 @@ use App\Contracts\TransferPublisherInterface;
 use App\Services\DryRun\DryRunContext;
 use App\Services\DryRun\DryRunRecorder;
 use App\Services\Kafka\DryRunTransferPublisher;
+use App\Services\KafkaTransferProcessor;
 use App\Services\TransferMessageConsumer;
-use App\Services\TransferProcessor;
 use App\Services\TransferRetryPolicy;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use RuntimeException;
@@ -21,7 +21,7 @@ final class TransferMessageConsumerTest extends TestCase
 
     public function test_consumes_valid_transfer_and_dispatches_notification(): void
     {
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
 
         $payload = [
@@ -50,7 +50,7 @@ final class TransferMessageConsumerTest extends TestCase
 
     public function test_sends_malformed_message_to_dlq(): void
     {
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
 
         $message = [
@@ -77,7 +77,7 @@ final class TransferMessageConsumerTest extends TestCase
 
     public function test_publishes_retry_on_processor_failure(): void
     {
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
 
         $payload = [
@@ -117,7 +117,7 @@ final class TransferMessageConsumerTest extends TestCase
 
     public function test_publishes_retry_with_existing_attempt_count(): void
     {
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
 
         $payload = [
@@ -156,7 +156,7 @@ final class TransferMessageConsumerTest extends TestCase
 
     public function test_sends_to_dlq_when_retry_attempts_exhausted(): void
     {
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
 
         $payload = [
@@ -199,7 +199,7 @@ final class TransferMessageConsumerTest extends TestCase
 
     public function test_publishes_dlq_for_invalid_transfer_id_payload(): void
     {
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
 
         $message = [
@@ -235,7 +235,7 @@ final class TransferMessageConsumerTest extends TestCase
 
         $retryPolicy = new TransferRetryPolicy(new DryRunTransferPublisher($context, $publisher));
 
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
 
         $payload = [
             'transfer_id' => 'txn_123',
@@ -277,7 +277,7 @@ final class TransferMessageConsumerTest extends TestCase
 
         $retryPolicy = new TransferRetryPolicy(new DryRunTransferPublisher($context, $publisher));
 
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
 
         $payload = [
             'transfer_id' => 'txn_123',

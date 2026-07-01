@@ -5,41 +5,69 @@ parameters:
 			identifier: method.alreadyNarrowedType
 			count: 1
 			path: tests/Unit/ExampleTest.php
-		-
-			message: '#^Call to an undefined method [a-zA-Z0-9\\_]+\:\:shouldReceive\(\)\.$#'
-			identifier: method.notFound
-			path: tests
+
 		-
 			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
 			identifier: method.notFound
-			path: tests
+			count: 9
+			path: tests/Unit/Services/KafkaTransferProcessorTest.php
+
+		-
+			message: '#^Call to an undefined method App\\Contracts\\TransferPublisherInterface\:\:shouldReceive\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Unit/Services/KafkaTransferServiceTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Bus\\Dispatcher\:\:shouldReceive\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Unit/Services/KafkaTransferServiceTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Contracts\\Cache\\Repository\:\:shouldReceive\(\)\.$#'
+			identifier: method.notFound
+			count: 6
+			path: tests/Unit/Services/KafkaTransferServiceTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			count: 14
+			path: tests/Unit/Services/TransferMessageConsumerTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			count: 11
+			path: tests/Unit/Services/TransferRetryMessageConsumerTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Unit/Services/TransferRetryPolicyTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			count: 10
+			path: tests/Unit/Services/WalletTransferServiceTest.php
+
 		-
 			message: '#^Parameter \#1 \$authorizer of class App\\Services\\WalletTransferService constructor expects App\\Services\\AuthorizerClient, Mockery\\MockInterface given\.$#'
 			identifier: argument.type
-			count: 3
+			count: 14
 			path: tests/Unit/Services/WalletTransferServiceTest.php
+
 		-
 			message: '#^Parameter \#2 \$dispatcher of class App\\Services\\WalletTransferService constructor expects Illuminate\\Contracts\\Bus\\Dispatcher, Mockery\\MockInterface given\.$#'
 			identifier: argument.type
-			count: 3
+			count: 14
 			path: tests/Unit/Services/WalletTransferServiceTest.php
+
 		-
-			message: '#^Parameter \#3 \$logger of class App\\Services\\WalletTransferService constructor expects Psr\\Log\\LoggerInterface, Mockery\\MockInterface given\.$#'
+			message: '#^Parameter \#4 \$logger of class App\\Services\\WalletTransferService constructor expects Psr\\Log\\LoggerInterface, Mockery\\MockInterface given\.$#'
 			identifier: argument.type
-			count: 3
-			path: tests/Unit/Services/WalletTransferServiceTest.php
-		-
-			message: '#^Parameter \#1 \$authorizer of class App\\Services\\WalletTransferService constructor expects App\\Services\\AuthorizerClient, Mockery\\MockInterface given\.$#'
-			identifier: argument.type
-			count: 3
-			path: tests/Unit/Services/WalletTransferServiceTest.php
-		-
-			message: '#^Parameter \#2 \$dispatcher of class App\\Services\\WalletTransferService constructor expects Illuminate\\Contracts\\Bus\\Dispatcher, Mockery\\MockInterface given\.$#'
-			identifier: argument.type
-			count: 3
-			path: tests/Unit/Services/WalletTransferServiceTest.php
-		-
-			message: '#^Parameter \#3 \$logger of class App\\Services\\WalletTransferService constructor expects Psr\\Log\\LoggerInterface, Mockery\\MockInterface given\.$#'
-			identifier: argument.type
-			count: 3
+			count: 14
 			path: tests/Unit/Services/WalletTransferServiceTest.php

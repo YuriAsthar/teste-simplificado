@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\AuthorizerResult;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class AuthorizerClient
 {
@@ -19,7 +21,7 @@ class AuthorizerClient
      */
     private const array RETRY_BACKOFF_MS = [2000];
 
-    public function authorize(): bool
+    public function authorize(): AuthorizerResult
     {
         $url = config('services.authorizer.url', self::AUTHORIZE_URL);
         $timeout = (int) config('services.authorizer.timeout', self::TIMEOUT_SECONDS);
@@ -31,11 +33,25 @@ class AuthorizerClient
                 })
                 ->get($url);
 
-            return $response->successful() && $response->json('data.authorization') === true;
+            if ($response->serverError() || $response->status() === HttpResponse::HTTP_SERVICE_UNAVAILABLE) {
+                return AuthorizerResult::Transient;
+            }
+
+            if ($response->successful() && $response->json('data.authorization') === true) {
+                return AuthorizerResult::Authorized;
+            }
+
+            return AuthorizerResult::Rejected;
         } catch (ConnectionException) {
-            return false;
-        } catch (RequestException) {
-            return false;
+            return AuthorizerResult::Transient;
+        } catch (RequestException $exception) {
+            $response = $exception->response;
+
+            if (!is_null($response) && ($response->serverError() || $response->status() === HttpResponse::HTTP_SERVICE_UNAVAILABLE)) {
+                return AuthorizerResult::Transient;
+            }
+
+            return AuthorizerResult::Rejected;
         }
     }
 }

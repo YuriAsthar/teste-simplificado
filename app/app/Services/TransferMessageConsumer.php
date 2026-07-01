@@ -9,7 +9,7 @@ use Throwable;
 class TransferMessageConsumer
 {
     public function __construct(
-        private TransferProcessor $processor,
+        private KafkaTransferProcessor $processor,
         private TransferRetryPolicy $retryPolicy,
     ) {
     }

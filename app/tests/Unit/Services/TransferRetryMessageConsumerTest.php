@@ -6,7 +6,7 @@ namespace Tests\Unit\Services;
 
 use App\Services\DryRun\DryRunContext;
 use App\Services\DryRun\DryRunRecorder;
-use App\Services\TransferProcessor;
+use App\Services\KafkaTransferProcessor;
 use App\Services\TransferRetryMessageConsumer;
 use App\Services\TransferRetryPolicy;
 use Carbon\Carbon;
@@ -23,7 +23,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
     {
         Carbon::setTestNow('2026-01-01 12:00:00');
 
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
         $context = new DryRunContext(new DryRunRecorder());
 
@@ -51,7 +51,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
     {
         Carbon::setTestNow('2026-01-01 12:00:00');
 
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
         $context = new DryRunContext(new DryRunRecorder());
 
@@ -75,7 +75,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
 
     public function test_sends_missing_meta_to_dlq(): void
     {
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
         $context = new DryRunContext(new DryRunRecorder());
 
@@ -91,7 +91,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
 
     public function test_sends_missing_retry_metadata_to_dlq(): void
     {
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
         $context = new DryRunContext(new DryRunRecorder());
 
@@ -115,7 +115,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
     {
         Carbon::setTestNow('2026-01-01 12:00:00');
 
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
         $context = new DryRunContext(new DryRunRecorder());
         $exception = new RuntimeException('processor failed');
@@ -153,7 +153,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
     {
         Carbon::setTestNow('2026-01-01 12:00:00');
 
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
         $context = new DryRunContext(new DryRunRecorder());
         $exception = new RuntimeException('processor failed');
@@ -193,7 +193,7 @@ final class TransferRetryMessageConsumerTest extends TestCase
     {
         Carbon::setTestNow('2026-01-01 12:00:00');
 
-        $processor = $this->mock(TransferProcessor::class);
+        $processor = $this->mock(KafkaTransferProcessor::class);
         $retryPolicy = $this->mock(TransferRetryPolicy::class);
         $context = new DryRunContext(new DryRunRecorder());
         $context->enable();

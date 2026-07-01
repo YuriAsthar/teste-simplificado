@@ -4,7 +4,7 @@
 End-to-end tests for version 1 API endpoints.
 
 ## Files
-- `TransferControllerTest.php` — Covers successful transfers, idempotency, insufficient funds, currency mismatch, validation errors for missing/invalid/same payer and payee.
+- `TransferControllerTest.php` — Covers successful transfers, idempotency replay, 409 fingerprint mismatch, 409 in-progress, missing/empty `Idempotency-Key` header, `amount` validation, transient authorizer 503 + retry, failed-transfer replay, missing-payer replay, and business-rule failures.
 - `TokenControllerTest.php` — Tests token issuance endpoint.
 
 ## Conventions

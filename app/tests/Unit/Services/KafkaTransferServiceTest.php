@@ -7,8 +7,8 @@ namespace Tests\Unit\Services;
 use App\Contracts\TransferPublisherInterface;
 use App\Jobs\SendNotificationJob;
 use App\Models\User;
+use App\Services\KafkaTransferService;
 use App\Services\TransferMessageBuilder;
-use App\Services\TransferService;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -20,11 +20,11 @@ use Psr\Log\LoggerInterface;
 use Tests\TestCase;
 
 #[AllowMockObjectsWithoutExpectations]
-final class TransferServiceTest extends TestCase
+final class KafkaTransferServiceTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
-    private TransferService $transferService;
+    private KafkaTransferService $transferService;
 
     private Repository $cache;
 
@@ -50,7 +50,7 @@ final class TransferServiceTest extends TestCase
         $this->messageBuilder = new TransferMessageBuilder();
         $this->logger = $this->createMock(LoggerInterface::class);
 
-        $this->transferService = new TransferService(
+        $this->transferService = new KafkaTransferService(
             $this->cache,
             $this->dispatcher,
             $this->publisher,

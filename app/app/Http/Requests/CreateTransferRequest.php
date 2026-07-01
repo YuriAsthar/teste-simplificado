@@ -4,13 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-use App\Support\MoneyParser;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Validator;
-use InvalidArgumentException;
 
 final class CreateTransferRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'idempotency_key' => $this->header('Idempotency-Key'),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -24,38 +28,29 @@ final class CreateTransferRequest extends FormRequest
         return [
             'payer' => ['required', 'integer', 'exists:users,id'],
             'payee' => ['required', 'integer', 'exists:users,id', 'different:payer'],
-            'value' => ['required', 'string', 'regex:/^\d+(\.\d{1,2})?$/'],
+            'amount' => ['required', 'integer', 'gt:0'],
+            'idempotency_key' => ['required', 'string', 'min:1'],
         ];
     }
 
-    public function withValidator(Validator $validator): void
+    /**
+     * @return array<string, array<int, string>|string>
+     */
+    public function messages(): array
     {
-        $validator->after(function (Validator $validator): void {
-            $value = $this->input('value');
-
-            if (!is_string($value)) {
-                return;
-            }
-
-            try {
-                if (MoneyParser::parseToCents($value) <= 0) {
-                    $validator->errors()->add('value', 'The value must be greater than 0.');
-                }
-            } catch (InvalidArgumentException) {
-                // The regex rule already covers invalid format; do not duplicate errors.
-            }
-        });
+        return [
+            'amount.gt' => 'The amount must be greater than 0.',
+            'idempotency_key.required' => 'The Idempotency-Key header is required.',
+        ];
     }
 
-    public function amountCents(): int
+    public function amount(): int
     {
-        return MoneyParser::parseToCents($this->validated('value'));
+        return (int) $this->validated('amount');
     }
 
-    public function idempotencyKey(): ?string
+    public function idempotencyKey(): string
     {
-        $header = $this->header('Idempotency-Key');
-
-        return is_string($header) && $header !== '' ? $header : null;
+        return (string) $this->validated('idempotency_key');
     }
 }

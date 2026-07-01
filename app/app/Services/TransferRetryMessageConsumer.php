@@ -13,7 +13,7 @@ use Throwable;
 class TransferRetryMessageConsumer
 {
     public function __construct(
-        private TransferProcessor $processor,
+        private KafkaTransferProcessor $processor,
         private TransferRetryPolicy $retryPolicy,
         private DryRunContext $context,
     ) {

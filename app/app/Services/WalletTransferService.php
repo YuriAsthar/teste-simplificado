@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\AuthorizerResult;
 use App\Enums\CurrencyType;
 use App\Enums\FailureReason;
+use App\Enums\IdempotencyKeyStatus;
 use App\Enums\TransferStatus;
 use App\Enums\UserType;
-use App\Models\IdempotencyKey;
+use App\Exceptions\IdempotencyKeyInProgressException;
+use App\Exceptions\TransientAuthorizerException;
 use App\Models\Transfer;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
@@ -27,44 +29,126 @@ final readonly class WalletTransferService
     public function __construct(
         private AuthorizerClient $authorizer,
         private Dispatcher $dispatcher,
+        private IdempotencyKeyService $idempotencyService,
         private LoggerInterface $logger,
     ) {
     }
 
+    /**
+     * @throws TransientAuthorizerException
+     */
     public function execute(
         int $payerId,
         int $payeeId,
-        int $amountCents,
-        ?string $idempotencyKey = null,
+        int $amount,
+        string $idempotencyKey,
+    ): Transfer {
+        if ($idempotencyKey === '') {
+            return $this->executeWithoutKey($payerId, $payeeId, $amount);
+        }
+
+        $fingerprint = $this->idempotencyService->buildFingerprint($payerId, $payeeId, $amount);
+
+        $acquisition = $this->idempotencyService->acquireOrResolveIdempotencyKey($idempotencyKey, $fingerprint);
+
+        if (!$acquisition['created'] && $acquisition['record']->status === IdempotencyKeyStatus::Processing) {
+            throw new IdempotencyKeyInProgressException();
+        }
+
+        if (!$acquisition['created'] && $acquisition['record']->status === IdempotencyKeyStatus::Completed) {
+            $transfer = $acquisition['record']->transfer;
+
+            if (!is_null($transfer)) {
+                return $transfer;
+            }
+        }
+
+        return $this->executeWithKey($payerId, $payeeId, $amount, $idempotencyKey, $fingerprint);
+    }
+
+    private function executeWithoutKey(
+        int $payerId,
+        int $payeeId,
+        int $amount,
     ): Transfer {
         if ($payerId === $payeeId) {
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
-                $amountCents,
+                $amount,
                 null,
                 FailureReason::SamePayerAndPayee,
             );
         }
 
-        if ($amountCents <= 0) {
+        if ($amount <= 0) {
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
-                $amountCents,
+                $amount,
                 null,
                 FailureReason::InvalidAmount,
             );
         }
 
-        $key = $this->resolveIdempotencyKey($payerId, $payeeId, $amountCents, $idempotencyKey);
+        return $this->runValidationsAndTransaction($payerId, $payeeId, $amount, null);
+    }
 
-        $existingTransfer = $this->findExistingTransfer($key);
-
-        if (!is_null($existingTransfer)) {
-            return $existingTransfer;
+    /**
+     * @throws TransientAuthorizerException
+     */
+    private function executeWithKey(
+        int $payerId,
+        int $payeeId,
+        int $amount,
+        string $idempotencyKey,
+        string $fingerprint,
+    ): Transfer {
+        if ($payerId === $payeeId) {
+            return $this->createFailedTransfer(
+                $payerId,
+                $payeeId,
+                $amount,
+                $idempotencyKey,
+                FailureReason::SamePayerAndPayee,
+                $fingerprint,
+            );
         }
 
+        if ($amount <= 0) {
+            return $this->createFailedTransfer(
+                $payerId,
+                $payeeId,
+                $amount,
+                $idempotencyKey,
+                FailureReason::InvalidAmount,
+                $fingerprint,
+            );
+        }
+
+        try {
+            $transfer = $this->runValidationsAndTransaction($payerId, $payeeId, $amount, $idempotencyKey, $fingerprint);
+        } catch (TransientAuthorizerException $exception) {
+            $this->idempotencyService->deleteProcessingIdempotencyKey($idempotencyKey);
+
+            throw $exception;
+        }
+
+        $this->idempotencyService->finalizeIdempotencyKey($idempotencyKey, $fingerprint, $transfer);
+
+        return $transfer;
+    }
+
+    /**
+     * @throws TransientAuthorizerException
+     */
+    private function runValidationsAndTransaction(
+        int $payerId,
+        int $payeeId,
+        int $amount,
+        ?string $idempotencyKey,
+        ?string $fingerprint = null,
+    ): Transfer {
         $payer = $this->findActiveUser($payerId);
         $payee = $this->findActiveUser($payeeId);
 
@@ -72,9 +156,10 @@ final readonly class WalletTransferService
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
-                $amountCents,
-                $key,
+                $amount,
+                $idempotencyKey,
                 FailureReason::PayerNotFound,
+                $fingerprint,
             );
         }
 
@@ -82,9 +167,10 @@ final readonly class WalletTransferService
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
-                $amountCents,
-                $key,
+                $amount,
+                $idempotencyKey,
                 FailureReason::PayeeNotFound,
+                $fingerprint,
             );
         }
 
@@ -95,9 +181,10 @@ final readonly class WalletTransferService
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
-                $amountCents,
-                $key,
+                $amount,
+                $idempotencyKey,
                 FailureReason::PayerIsMerchant,
+                $fingerprint,
             );
         }
 
@@ -108,9 +195,10 @@ final readonly class WalletTransferService
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
-                $amountCents,
-                $key,
+                $amount,
+                $idempotencyKey,
                 FailureReason::WalletInactive,
+                $fingerprint,
             );
         }
 
@@ -118,9 +206,10 @@ final readonly class WalletTransferService
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
-                $amountCents,
-                $key,
+                $amount,
+                $idempotencyKey,
                 FailureReason::WalletInactive,
+                $fingerprint,
             );
         }
 
@@ -128,45 +217,31 @@ final readonly class WalletTransferService
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
-                $amountCents,
-                $key,
+                $amount,
+                $idempotencyKey,
                 FailureReason::CurrencyMismatch,
+                $fingerprint,
             );
         }
 
-        if (!$this->authorizer->authorize()) {
+        $authorizerResult = $this->authorizer->authorize();
+
+        if ($authorizerResult === AuthorizerResult::Rejected) {
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
-                $amountCents,
-                $key,
+                $amount,
+                $idempotencyKey,
                 FailureReason::AuthorizerRejected,
+                $fingerprint,
             );
         }
 
-        return $this->runInTransaction($payer, $payee, $payerWallet, $payeeWallet, $amountCents, $key);
-    }
-
-    private function resolveIdempotencyKey(
-        int $payerId,
-        int $payeeId,
-        int $amountCents,
-        ?string $providedKey,
-    ): string {
-        if (!in_array($providedKey, [null, '', '0'], true)) {
-            return $providedKey;
+        if ($authorizerResult === AuthorizerResult::Transient) {
+            throw new TransientAuthorizerException();
         }
 
-        return hash('sha256', "transfer:{$payerId}:{$payeeId}:{$amountCents}");
-    }
-
-    private function findExistingTransfer(string $idempotencyKey): ?Transfer
-    {
-        $keyRecord = IdempotencyKey::query()
-            ->where('key', $idempotencyKey)
-            ->first();
-
-        return $keyRecord?->transfer;
+        return $this->runInTransaction($payer, $payee, $payerWallet, $payeeWallet, $amount, $idempotencyKey, $fingerprint);
     }
 
     private function findActiveUser(int $userId): ?User
@@ -186,16 +261,18 @@ final readonly class WalletTransferService
         User $payee,
         Wallet $payerWallet,
         Wallet $payeeWallet,
-        int $amountCents,
-        string $idempotencyKey,
+        int $amount,
+        ?string $idempotencyKey,
+        ?string $fingerprint = null,
     ): Transfer {
         return DB::transaction(function () use (
             $payer,
             $payee,
             $payerWallet,
             $payeeWallet,
-            $amountCents,
+            $amount,
             $idempotencyKey,
+            $fingerprint,
         ): Transfer {
             $firstWalletId = min($payerWallet->id, $payeeWallet->id);
             $secondWalletId = max($payerWallet->id, $payeeWallet->id);
@@ -212,37 +289,32 @@ final readonly class WalletTransferService
 
             $payerBalance = (int) $lockedPayerWallet->getRawOriginal('balance');
 
-            if ($payerBalance < $amountCents) {
-                $transfer = $this->createFailedTransfer(
+            if ($payerBalance < $amount) {
+                return $this->createFailedTransfer(
                     $payer->id,
                     $payee->id,
-                    $amountCents,
+                    $amount,
                     $idempotencyKey,
                     FailureReason::InsufficientFunds,
+                    $fingerprint,
                 );
-
-                $this->upsertIdempotencyKey($idempotencyKey, $transfer);
-
-                return $transfer;
             }
 
-            $lockedPayerWallet->balance = $payerBalance - $amountCents;
+            $lockedPayerWallet->balance = $payerBalance - $amount;
             $lockedPayerWallet->save();
 
             $payeeBalance = (int) $lockedPayeeWallet->getRawOriginal('balance');
-            $lockedPayeeWallet->balance = $payeeBalance + $amountCents;
+            $lockedPayeeWallet->balance = $payeeBalance + $amount;
             $lockedPayeeWallet->save();
 
             $transfer = Transfer::create([
                 'payer_id' => $payer->id,
                 'payee_id' => $payee->id,
-                'amount' => $amountCents,
+                'amount' => $amount,
                 'currency' => $payerWallet->currency->value,
                 'idempotency_key' => $idempotencyKey,
                 'status' => TransferStatus::Completed,
             ]);
-
-            $this->upsertIdempotencyKey($idempotencyKey, $transfer);
 
             $this->dispatchNotification($transfer);
 
@@ -264,34 +336,31 @@ final readonly class WalletTransferService
         }
     }
 
-    private function upsertIdempotencyKey(string $idempotencyKey, Transfer $transfer): void
-    {
-        IdempotencyKey::updateOrCreate(
-            ['key' => $idempotencyKey],
-            ['transfer_id' => $transfer->id],
-        );
-    }
-
     private function createFailedTransfer(
         int $payerId,
         int $payeeId,
-        int $amountCents,
+        int $amount,
         ?string $idempotencyKey,
         FailureReason $reason,
+        ?string $fingerprint = null,
     ): Transfer {
         $transfer = Transfer::create([
             'payer_id' => $payerId,
             'payee_id' => $payeeId,
-            'amount' => $amountCents,
+            'amount' => $amount,
             'currency' => CurrencyType::BRA->value,
             'idempotency_key' => $idempotencyKey,
             'status' => TransferStatus::Failed,
             'failure_reason' => $reason,
         ]);
 
-        if (!in_array($idempotencyKey, [null, '', '0'], true)) {
+        if (!is_null($idempotencyKey) && $idempotencyKey !== '') {
             try {
-                $this->upsertIdempotencyKey($idempotencyKey, $transfer);
+                $this->idempotencyService->finalizeIdempotencyKey(
+                    $idempotencyKey,
+                    $fingerprint ?? $this->idempotencyService->buildFingerprint($payerId, $payeeId, $amount),
+                    $transfer,
+                );
             } catch (\Throwable $exception) {
                 $this->logger->warning('Failed to record idempotency key for failed transfer.', [
                     'transfer_id' => $transfer->id,

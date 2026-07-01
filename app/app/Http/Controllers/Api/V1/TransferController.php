@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\FailureReason;
+use App\Enums\TransferStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateTransferRequest;
+use App\Models\Transfer;
 use App\Models\User;
 use App\Services\WalletTransferService;
 use Illuminate\Http\JsonResponse;
@@ -35,15 +37,11 @@ final class TransferController extends Controller
         $transfer = $this->service->execute(
             $payerId,
             (int) $request->validated('payee'),
-            $request->amountCents(),
+            $request->amount(),
             $request->idempotencyKey(),
         );
 
-        $statusCode = $transfer->status->isFailed()
-            && $transfer->failure_reason !== FailureReason::SamePayerAndPayee
-            && $transfer->failure_reason !== FailureReason::InvalidAmount
-            ? 422
-            : 201;
+        $statusCode = $this->resolveStatusCode($transfer);
 
         return response()->json([
             'data' => [
@@ -52,5 +50,17 @@ final class TransferController extends Controller
                 'failure_reason' => $transfer->failure_reason?->value,
             ],
         ], $statusCode);
+    }
+
+    private function resolveStatusCode(Transfer $transfer): int
+    {
+        if (!$transfer->status->isFailed()) {
+            return 201;
+        }
+
+        return in_array($transfer->failure_reason, [
+            FailureReason::SamePayerAndPayee,
+            FailureReason::InvalidAmount,
+        ], true) ? 201 : 422;
     }
 }

@@ -26,11 +26,11 @@ final class KafkaProduceTransferCommand extends Command
     {
         $payerId = (int) $this->argument('payer_id');
         $payeeId = (int) $this->argument('payee_id');
-        $amountCents = (int) $this->argument('amount');
+        $amount = (int) $this->argument('amount');
         $isDryRun = (bool) $this->option('dry-run');
 
         try {
-            $this->validateArguments($payerId, $payeeId, $amountCents);
+            $this->validateArguments($payerId, $payeeId, $amount);
         } catch (InvalidArgumentException $exception) {
             $this->error($exception->getMessage());
 
@@ -42,7 +42,7 @@ final class KafkaProduceTransferCommand extends Command
             'transfer_id' => $transferId,
             'payer_id' => $payerId,
             'payee_id' => $payeeId,
-            'amount' => $amountCents,
+            'amount' => $amount,
             'occurred_at' => now()->toIso8601String(),
         ];
 
@@ -63,9 +63,9 @@ final class KafkaProduceTransferCommand extends Command
         return self::SUCCESS;
     }
 
-    private function validateArguments(int $payerId, int $payeeId, int $amountCents): void
+    private function validateArguments(int $payerId, int $payeeId, int $amount): void
     {
-        if ($payerId <= 0 || $payeeId <= 0 || $amountCents <= 0) {
+        if ($payerId <= 0 || $payeeId <= 0 || $amount <= 0) {
             throw new InvalidArgumentException('payer_id, payee_id, and amount must be positive integers.');
         }
     }

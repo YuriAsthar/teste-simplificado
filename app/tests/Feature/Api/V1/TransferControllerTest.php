@@ -6,9 +6,12 @@ namespace Tests\Feature\Api\V1;
 
 use App\Enums\CurrencyType;
 use App\Enums\FailureReason;
+use App\Enums\IdempotencyKeyStatus;
 use App\Enums\TransferStatus;
 use App\Enums\UserType;
 use App\Jobs\SendTransferNotificationJob;
+use App\Models\IdempotencyKey;
+use App\Models\Transfer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -28,7 +31,9 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => '25.00',
+            'amount' => 2500,
+        ], [
+            'Idempotency-Key' => 'auth-required',
         ]);
 
         $response->assertUnauthorized();
@@ -45,7 +50,9 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => '25.00',
+            'amount' => 2500,
+        ], [
+            'Idempotency-Key' => 'forbidden',
         ]);
 
         $response->assertForbidden();
@@ -70,7 +77,7 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => '25.00',
+            'amount' => 2500,
         ], [
             'Idempotency-Key' => 'transfer-1',
         ]);
@@ -104,7 +111,9 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => '5.00',
+            'amount' => 500,
+        ], [
+            'Idempotency-Key' => 'insufficient-funds',
         ]);
 
         $response->assertStatus(422)
@@ -129,7 +138,9 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfer', [
             'payer' => $merchant->id,
             'payee' => $payee->id,
-            'value' => '10.00',
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => 'merchant-payer',
         ]);
 
         $response->assertStatus(422)
@@ -155,7 +166,9 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => '10.00',
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => 'authorizer-rejects',
         ]);
 
         $response->assertStatus(422)
@@ -182,7 +195,9 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => '10.00',
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => 'soft-deleted-payee',
         ]);
 
         $response->assertStatus(422)
@@ -209,7 +224,9 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => '10.00',
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => 'currency-mismatch',
         ]);
 
         $response->assertStatus(422)
@@ -235,7 +252,7 @@ final class TransferControllerTest extends TestCase
         $payload = [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => '10.00',
+            'amount' => 1000,
         ];
 
         $first = $this->postJson('/api/v1/transfer', $payload, [
@@ -254,22 +271,75 @@ final class TransferControllerTest extends TestCase
         );
     }
 
-    public function test_it_returns_validation_error_when_payer_is_missing(): void
+    public function test_it_returns_409_when_idempotency_key_is_reused_with_different_payload(): void
     {
+        Http::fake([
+            'https://util.devi.tools/api/v2/authorize' => Http::response([
+                'data' => ['authorization' => true],
+            ], 200),
+        ]);
+        Queue::fake();
+
         $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        $payer->wallet->forceFill(['balance' => 10000])->save();
 
         Sanctum::actingAs($payer);
 
+        $this->postJson('/api/v1/transfer', [
+            'payer' => $payer->id,
+            'payee' => $payee->id,
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => 'mismatch-key',
+        ])->assertStatus(201);
+
         $response = $this->postJson('/api/v1/transfer', [
-            'payee' => $payer->id,
-            'value' => '10.00',
+            'payer' => $payer->id,
+            'payee' => $payee->id,
+            'amount' => 2000,
+        ], [
+            'Idempotency-Key' => 'mismatch-key',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['payer']);
+        $response->assertStatus(409)
+            ->assertJsonPath('code', 'idempotency_key_reuse_with_different_payload');
     }
 
-    public function test_it_returns_validation_error_when_value_is_invalid(): void
+    public function test_it_returns_409_when_replay_hits_processing_state(): void
+    {
+        Http::fake([
+            'https://util.devi.tools/api/v2/authorize' => Http::response([
+                'data' => ['authorization' => true],
+            ], 200),
+        ]);
+        Queue::fake();
+
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        Sanctum::actingAs($payer);
+
+        IdempotencyKey::factory()->create([
+            'key' => 'processing-key',
+            'status' => IdempotencyKeyStatus::Processing,
+            'fingerprint' => hash('sha256', implode(':', [$payer->id, $payee->id, 1000])),
+        ]);
+
+        $response = $this->postJson('/api/v1/transfer', [
+            'payer' => $payer->id,
+            'payee' => $payee->id,
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => 'processing-key',
+        ]);
+
+        $response->assertStatus(409)
+            ->assertJsonPath('code', 'transfer_in_progress');
+    }
+
+    public function test_missing_idempotency_key_returns_422(): void
     {
         $payer = User::factory()->create();
         $payee = User::factory()->create();
@@ -279,11 +349,47 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payee->id,
-            'value' => '0',
+            'amount' => 1000,
         ]);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['value']);
+            ->assertJsonValidationErrors(['idempotency_key']);
+    }
+
+    public function test_it_returns_validation_error_when_payer_is_missing(): void
+    {
+        $payer = User::factory()->create();
+
+        Sanctum::actingAs($payer);
+
+        $response = $this->postJson('/api/v1/transfer', [
+            'payee' => $payer->id,
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => 'missing-payer',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['payer']);
+    }
+
+    public function test_it_returns_validation_error_when_amount_is_invalid(): void
+    {
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        Sanctum::actingAs($payer);
+
+        $response = $this->postJson('/api/v1/transfer', [
+            'payer' => $payer->id,
+            'payee' => $payee->id,
+            'amount' => 0,
+        ], [
+            'Idempotency-Key' => 'invalid-amount',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['amount']);
     }
 
     public function test_it_returns_validation_error_when_payer_and_payee_are_same(): void
@@ -295,10 +401,169 @@ final class TransferControllerTest extends TestCase
         $response = $this->postJson('/api/v1/transfer', [
             'payer' => $payer->id,
             'payee' => $payer->id,
-            'value' => '10.00',
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => 'same-payer-payee',
         ]);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['payee']);
+    }
+
+    public function test_transient_authorizer_failure_returns_503_and_allows_retry(): void
+    {
+        Http::fake([
+            'https://util.devi.tools/api/v2/authorize' => Http::sequence()
+                ->push([], 503)
+                ->push([
+                    'data' => ['authorization' => true],
+                ], 200),
+        ]);
+        Queue::fake();
+
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        $payer->wallet->forceFill(['balance' => 10000])->save();
+
+        Sanctum::actingAs($payer);
+
+        $response = $this->postJson('/api/v1/transfer', [
+            'payer' => $payer->id,
+            'payee' => $payee->id,
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => 'transient-key',
+        ]);
+
+        $response->assertStatus(503)
+            ->assertJsonPath('code', 'authorizer_unavailable');
+
+        $this->assertDatabaseMissing('idempotency_keys', [
+            'key' => 'transient-key',
+        ]);
+
+        $retry = $this->postJson('/api/v1/transfer', [
+            'payer' => $payer->id,
+            'payee' => $payee->id,
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => 'transient-key',
+        ]);
+
+        $retry->assertStatus(201);
+    }
+
+    public function test_replay_of_failed_transfer_returns_same_response(): void
+    {
+        Http::fake([
+            'https://util.devi.tools/api/v2/authorize' => Http::response([
+                'data' => ['authorization' => true],
+            ], 200),
+        ]);
+        Queue::fake();
+
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        $payer->wallet->forceFill(['balance' => 100])->save();
+
+        Sanctum::actingAs($payer);
+
+        $payload = [
+            'payer' => $payer->id,
+            'payee' => $payee->id,
+            'amount' => 500,
+        ];
+
+        $first = $this->postJson('/api/v1/transfer', $payload, [
+            'Idempotency-Key' => 'failed-replay',
+        ]);
+
+        $first->assertStatus(422)
+            ->assertJsonPath('data.failure_reason', FailureReason::InsufficientFunds->value);
+
+        $second = $this->postJson('/api/v1/transfer', $payload, [
+            'Idempotency-Key' => 'failed-replay',
+        ]);
+
+        $second->assertStatus(422)
+            ->assertJsonPath('data.id', $first->json('data.id'))
+            ->assertJsonPath('data.failure_reason', FailureReason::InsufficientFunds->value);
+    }
+
+    public function test_replay_of_missing_payer_returns_persisted_transfer(): void
+    {
+        Http::fake([
+            'https://util.devi.tools/api/v2/authorize' => Http::response([
+                'data' => ['authorization' => true],
+            ], 200),
+        ]);
+        Queue::fake();
+
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+        $payer->delete();
+
+        Sanctum::actingAs($payer);
+
+        $payload = [
+            'payer' => $payer->id,
+            'payee' => $payee->id,
+            'amount' => 1000,
+        ];
+
+        $first = $this->postJson('/api/v1/transfer', $payload, [
+            'Idempotency-Key' => 'missing-payer-replay',
+        ]);
+
+        $first->assertStatus(422)
+            ->assertJsonPath('data.failure_reason', FailureReason::PayerNotFound->value);
+
+        $second = $this->postJson('/api/v1/transfer', $payload, [
+            'Idempotency-Key' => 'missing-payer-replay',
+        ]);
+
+        $second->assertStatus(422)
+            ->assertJsonPath('data.id', $first->json('data.id'))
+            ->assertJsonPath('data.failure_reason', FailureReason::PayerNotFound->value);
+    }
+
+    public function test_empty_idempotency_key_header_returns_422(): void
+    {
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        Sanctum::actingAs($payer);
+
+        $response = $this->postJson('/api/v1/transfer', [
+            'payer' => $payer->id,
+            'payee' => $payee->id,
+            'amount' => 1000,
+        ], [
+            'Idempotency-Key' => '',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['idempotency_key']);
+    }
+
+    public function test_legacy_decimal_value_field_is_rejected(): void
+    {
+        $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        Sanctum::actingAs($payer);
+
+        $response = $this->postJson('/api/v1/transfer', [
+            'payer' => $payer->id,
+            'payee' => $payee->id,
+            'value' => '25.00',
+        ], [
+            'Idempotency-Key' => 'legacy-value',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['amount']);
     }
 }

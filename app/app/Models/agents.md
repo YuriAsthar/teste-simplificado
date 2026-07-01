@@ -6,7 +6,8 @@ Eloquent models for the relational wallet/transfer domain.
 ## Files
 - `User.php` — Authenticatable entity with soft deletes, document triple (`document_country`, `document_type`, `document_value`), `UserType` cast, and a `HasOne` wallet relation.
 - `Wallet.php` — Balance/currency container with soft deletes, `MoneyCast` on `balance`, and transfer relations. `Wallet::$fillable` does NOT include `balance`; balance is guarded and set only through the model under `MoneyCast`.
-- `Transfer.php` — Transfer record with status transitions, failure reasons, idempotency key, and wallet/user relations.
+- `Transfer.php` — Transfer record with `TransferStatus` and `FailureReason` backed-enum casts, idempotency key, and wallet/user relations. Recent migrations relaxed FK constraints so failed transfers can persist non-existent payer/payee references and `amount = 0`.
+- `IdempotencyKey.php` — Idempotency lock record with a `IdempotencyKeyStatus` backed-enum cast (`Processing`, `Completed`), SHA-256 `fingerprint`, and an optional `belongsTo(Transfer::class)` relation. The relation is optional (nullable `transfer_id`) because the `relaxed_transfer_constraints_for_failed_records` migration does not require every failed transfer row to exist in `users`/`wallets`.
 
 ## Conventions
 - Models use backed enum casts for domain values.

@@ -11,7 +11,7 @@ use Illuminate\Contracts\Cache\Repository;
 use InvalidArgumentException;
 use Throwable;
 
-class TransferProcessor
+class KafkaTransferProcessor
 {
     private const string IDEMPOTENCY_PREFIX = 'kafka:transfer:';
 
@@ -42,7 +42,7 @@ class TransferProcessor
 
         $payerId = (int) ($payload['payer_id'] ?? 0);
         $payeeId = (int) ($payload['payee_id'] ?? 0);
-        $amountCents = (int) ($payload['amount'] ?? 0);
+        $amount = (int) ($payload['amount'] ?? 0);
 
         $numericTransferId = is_numeric($transferId) ? (int) $transferId : 0;
 
@@ -50,7 +50,7 @@ class TransferProcessor
             $this->context->record('rabbitmq.dispatch', [
                 'payer_id' => $payerId,
                 'payee_id' => $payeeId,
-                'amount' => $amountCents,
+                'amount' => $amount,
                 'transfer_id' => $transferId,
             ]);
             $this->context->record('idempotency.skip', [

@@ -7,7 +7,7 @@ namespace Tests\Unit\Services;
 use App\Jobs\SendNotificationJob;
 use App\Services\DryRun\DryRunContext;
 use App\Services\DryRun\DryRunRecorder;
-use App\Services\TransferProcessor;
+use App\Services\KafkaTransferProcessor;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -16,7 +16,7 @@ use RuntimeException;
 use stdClass;
 use Tests\TestCase;
 
-final class TransferProcessorTest extends TestCase
+final class KafkaTransferProcessorTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
@@ -47,7 +47,7 @@ final class TransferProcessorTest extends TestCase
             }))
             ->andReturn($connection);
 
-        $processor = new TransferProcessor($dispatcher, $cache, $context);
+        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
         $processor->process([
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
@@ -71,7 +71,7 @@ final class TransferProcessorTest extends TestCase
 
         $cache->shouldNotReceive('put');
 
-        $processor = new TransferProcessor($dispatcher, $cache, $context);
+        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
         $processor->process([
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
@@ -89,7 +89,7 @@ final class TransferProcessorTest extends TestCase
         $dispatcher->shouldNotReceive('dispatch');
         $cache->shouldNotReceive('has');
 
-        $processor = new TransferProcessor($dispatcher, $cache, $context);
+        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('missing transfer_id');
@@ -118,7 +118,7 @@ final class TransferProcessorTest extends TestCase
 
         $cache->shouldNotReceive('put');
 
-        $processor = new TransferProcessor($dispatcher, $cache, $context);
+        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('dispatch failed');
@@ -146,7 +146,7 @@ final class TransferProcessorTest extends TestCase
         $dispatcher->shouldNotReceive('dispatch');
         $cache->shouldNotReceive('put');
 
-        $processor = new TransferProcessor($dispatcher, $cache, $context);
+        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
         $processor->process([
             'transfer_id' => 'txn_123',
             'payer_id' => 1,
@@ -178,7 +178,7 @@ final class TransferProcessorTest extends TestCase
 
         $cache->shouldNotReceive('put');
 
-        $processor = new TransferProcessor($dispatcher, $cache, $context);
+        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
         $processor->process([
             'transfer_id' => 'txn_123',
             'payer_id' => 1,

@@ -1,20 +1,17 @@
 # Console Commands
 
 ## Overview
-Artisan commands that support operational tasks for the wallet/transfer domain.
+Artisan commands for operational tasks.
 
-## Structure
-| File/Folder | Purpose | Type |
-|-------------|---------|------|
-| `RetryNotificationsCommand.php` | Dispatches `SendTransferNotificationJob` for completed transfers pending notification within the last 30 days. | PHP |
-| `ConsumeTransfersCommand.php` | Consumes transfer messages from Kafka/RabbitMQ. | PHP |
-| `ConsumeRetryTransfersCommand.php` | Consumes retry transfer messages from Kafka/RabbitMQ. | PHP |
-| `KafkaProduceTransferCommand.php` | Produces transfer messages to Kafka for testing. | PHP |
+## Files
+- `CleanupStaleIdempotencyKeysCommand.php` — `idempotency:cleanup-stale-keys`: deletes `Processing` idempotency key rows older than the configured TTL (`transfer.idempotency_processing_ttl_seconds`, default 300 seconds).
+- `KafkaProduceTransferCommand.php` — `kafka:produce-transfer`: publishes a manual transfer event to Kafka (local dev/test only).
 
 ## Conventions
-- Commands extend `Illuminate\Console\Command` and are auto-discovered by Artisan via their `signature` property; `routes/console.php` contains closure-based commands only.
-- Business logic delegates to services; commands are thin orchestrators.
+- Commands follow the Laravel 11 auto-discovery convention in `app/Console/Commands/`.
+- Use typed signatures with `{argument}` and `{--option}` syntax.
+- Return `self::SUCCESS` or `self::FAILURE`.
 
 ## Related
 - Parent: /app/agents.md
-- Related: /app/Jobs/agents.md
+- Related: /app/config/agents.md

@@ -12,7 +12,7 @@ use Illuminate\Contracts\Cache\Repository;
 use InvalidArgumentException;
 use Psr\Log\LoggerInterface;
 
-final readonly class TransferService
+final readonly class KafkaTransferService
 {
     private const int CACHE_TTL_SECONDS = 60;
 
@@ -36,7 +36,7 @@ final readonly class TransferService
     /**
      * @return array{transfer_id: string, status: string}
      */
-    public function authorizeAndExecuteTransfer(int $payerId, int $payeeId, int $amountCents): array
+    public function authorizeAndExecuteTransfer(int $payerId, int $payeeId, int $amount): array
     {
         $payer = $this->getCachedUser($payerId);
         $payee = $this->getCachedUser($payeeId);
@@ -45,7 +45,7 @@ final readonly class TransferService
             throw new InvalidArgumentException('Payer and payee must exist.');
         }
 
-        if ($amountCents <= 0) {
+        if ($amount <= 0) {
             throw new InvalidArgumentException('Amount must be greater than zero.');
         }
 
@@ -54,7 +54,7 @@ final readonly class TransferService
             'transfer_id' => $transferId,
             'payer_id' => $payerId,
             'payee_id' => $payeeId,
-            'amount' => $amountCents,
+            'amount' => $amount,
             'occurred_at' => now()->toIso8601String(),
         ];
 
@@ -73,7 +73,7 @@ final readonly class TransferService
             'transfer_id' => $transferId,
             'payer_id' => $payerId,
             'payee_id' => $payeeId,
-            'amount' => $amountCents,
+            'amount' => $amount,
         ]);
 
         return [

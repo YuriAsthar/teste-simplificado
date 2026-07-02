@@ -37,39 +37,6 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - KAFKA_BROKERS=kafka:9092
 
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        UID: "${UID:-1000}"
-        GID: "${GID:-1000}"
-    container_name: wallet-worker
-    user: "${UID:-1000}:${GID:-1000}"
-    working_dir: /var/www/html
-    volumes:
-      - .:/var/www/html
-    networks:
-      - backend
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-      rabbitmq:
-        condition: service_started
-      kafka:
-        condition: service_started
-    environment:
-      - APP_ENV=sandbox
-      - APP_DEBUG=true
-      - QUEUE_CONNECTION=rabbitmq
-      - CACHE_STORE=redis
-      - REDIS_HOST=redis
-      - RABBITMQ_HOST=rabbitmq
-      - KAFKA_BROKERS=kafka:9092
-    command: ["./docker/worker/entrypoint.sh", "--sleep=3", "--tries=3", "--timeout=60", "--max-time=3600"]
-
   web:
     image: nginx:1.25-alpine
     container_name: wallet-web

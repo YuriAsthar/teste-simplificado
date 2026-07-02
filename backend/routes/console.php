@@ -1,0 +1,18 @@
+<?php
+
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
+
+Artisan::command('inspire', function () {
+    $this->comment(Inspiring::quote());
+})->purpose('Display an inspiring quote');
+
+app(Schedule::class)
+    ->command('idempotency:cleanup-stale-keys')
+    ->everyMinute();
+
+app(Schedule::class)
+    ->command('outbox:publish --batch=100')
+    ->everyMinute()
+    ->withoutOverlapping(10);

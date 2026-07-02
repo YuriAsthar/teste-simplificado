@@ -48,6 +48,6 @@ final readonly class NotificationService
             );
         }
 
-        Log::info('Notification service returned success: HTTP '. $response->status(), $payload);
+        Log::info('Notification service returned success: HTTP ' . $response->status(), $payload);
     }
 }

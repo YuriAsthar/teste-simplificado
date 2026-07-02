@@ -44,6 +44,31 @@ final class NotificationServiceTest extends TestCase
         });
     }
 
+    public function test_it_accepts_204_no_content_as_success(): void
+    {
+        Http::fake([
+            '*' => Http::response('', 204),
+        ]);
+
+        /** @var User $payee */
+        $payee = User::factory()->create();
+
+        /** @var Transfer $transfer */
+        $transfer = Transfer::factory()->create([
+            'payee_id' => $payee->id,
+            'amount' => 2500,
+            'status' => 'completed',
+        ]);
+
+        $service = new NotificationService();
+        $service->notifyTransfer($transfer);
+
+        Http::assertSent(static function ($request) use ($payee, $transfer): bool {
+            return $request['user'] === $payee->email
+                && $request['transfer_id'] === $transfer->id;
+        });
+    }
+
     public function test_it_throws_exception_when_response_status_is_error(): void
     {
         Http::fake([
@@ -69,7 +94,7 @@ final class NotificationServiceTest extends TestCase
         $transfer = Transfer::factory()->create();
 
         $this->expectException(NotificationException::class);
-        $this->expectExceptionMessage('Notification service returned non-success: HTTP 200');
+        $this->expectExceptionMessage('Notification service returned non-success status: fail');
 
         (new NotificationService())->notifyTransfer($transfer);
     }

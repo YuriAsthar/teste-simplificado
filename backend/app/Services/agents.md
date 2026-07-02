@@ -10,7 +10,7 @@ Business-logic services. The directory contains both the legacy Kafka/publisher 
 - `LoginService.php` — Authenticates users and returns the authenticated `User` plus a new Sanctum `NewAccessToken` when credentials are valid.
 - `LogoutService.php` — Revokes the current Sanctum bearer token for the authenticated user.
 - `AuthorizerClient.php` — External authorizer HTTP client. Returns an `App\Enums\AuthorizerResult` enum (`Authorized`, `Rejected`, `Transient`) and retries only on `ConnectionException`.
-- `NotificationService.php` — `final readonly` external notification HTTP client; sends a POST to `services.notifier.url` for completed transfers and throws `App\Exceptions\NotificationException` on non-success or connection failure.
+- `NotificationService.php` — `final readonly` external notification HTTP client; sends a POST to `services.notifier.url` for completed transfers and throws `App\Exceptions\NotificationException` on non-2xx HTTP status or connection failure. Empty 204 No Content responses are accepted as success; if the response body is present, the JSON `status` field must equal `success`.
 - `KafkaTransferProcessor.php` — Kafka consumer bridge: uses Redis `kafka:transfer:{transfer_id}` as a pre-dispatch idempotency guard, dispatches `SendNotificationJob` on RabbitMQ, and marks messages processed when the transfer is missing or not completed to avoid endless redelivery.
 - `TransferMessageBuilder.php`, `TransferMessageConsumer.php`, `TransferRetryMessageConsumer.php`, `TransferRetryPolicy.php` — Kafka/RabbitMQ messaging plumbing.
 - `Kafka/DryRunTransferPublisher.php`, `KafkaTransferPublisher.php` — Kafka publisher implementations.

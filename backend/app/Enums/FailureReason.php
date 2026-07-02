@@ -22,18 +22,18 @@ enum FailureReason: string
     public function description(): string
     {
         return match ($this) {
-            self::InsufficientFunds => 'Saldo insuficiente para realizar a transferência.',
-            self::PayerNotFound => 'Carteira do pagador não encontrada.',
-            self::PayeeNotFound => 'Carteira do beneficiário não encontrada.',
-            self::InvalidAmount => 'O valor informado é inválido.',
-            self::CurrencyMismatch => 'As carteiras possuem moedas diferentes.',
-            self::WalletLocked => 'A carteira está temporariamente bloqueada.',
-            self::IdempotencyConflict => 'Conflito de idempotência detectado.',
-            self::SamePayerAndPayee => 'Pagador e beneficiário devem ser diferentes.',
-            self::PayerIsMerchant => 'Lojistas não podem realizar transferências.',
-            self::WalletInactive => 'A carteira informada está inativa.',
-            self::AuthorizerRejected => 'Transferência não autorizada pelo serviço externo.',
-            self::Unknown => 'Falha desconhecida.',
+            self::InsufficientFunds => 'Insufficient balance to complete the transfer.',
+            self::PayerNotFound => 'Payer wallet not found.',
+            self::PayeeNotFound => 'Payee wallet not found.',
+            self::InvalidAmount => 'The amount provided is invalid.',
+            self::CurrencyMismatch => 'The wallets have different currencies.',
+            self::WalletLocked => 'The wallet is temporarily locked.',
+            self::IdempotencyConflict => 'Idempotency conflict detected.',
+            self::SamePayerAndPayee => 'Payer and payee must be different.',
+            self::PayerIsMerchant => 'Merchants cannot make transfers.',
+            self::WalletInactive => 'The provided wallet is inactive.',
+            self::AuthorizerRejected => 'Transfer not authorized by the external service.',
+            self::Unknown => 'Unknown failure.',
         };
     }
 }

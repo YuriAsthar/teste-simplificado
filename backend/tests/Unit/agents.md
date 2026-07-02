@@ -8,7 +8,7 @@ PHPUnit unit tests for isolated, fast components: services, jobs, and domain hel
 |-------------|---------|------|
 | `Support/MoneyParserTest.php` | Tests decimal-string → integer-cents parsing, including edge cases and rejection of invalid formats. | PHP |
 | `Casts/MoneyCastTest.php` | Tests `MoneyCast` strict int-in/int-out behavior and rejection of null, float, string, etc. | PHP |
-| `Services/NotificationServiceTest.php` | Tests `NotificationService` using `Http::fake()` because the class is `final readonly`: success response, non-success HTTP status, non-success JSON status, connection failure, and payee email fallback. | PHP |
+| `Services/NotificationServiceTest.php` | Tests `NotificationService` using `Http::fake()` because the class is `final readonly`: success response, 204 No Content success, non-success HTTP status, non-success JSON status, connection failure, and payee email fallback. | PHP |
 | `Jobs/SendNotificationJobTest.php` | Tests the unified notification job: marks transfers notified on success, throws `NotificationException` on failure, skips non-completed/already-notified/missing transfers. | PHP |
 | `Services/WalletTransferServiceTest.php` | Tests the wallet-to-wallet transfer service: idempotency lock, fingerprint mismatch, in-progress state, stale-key recovery, transient authorizer cleanup, authorizer rejection cleanup, replay, failure paths, and `SendNotificationJob` dispatch via `Queue::fake()`. | PHP |
 | `Services/IdempotencyKeyServiceTest.php` | Tests idempotency fingerprint fixed order and SHA-256 format. | PHP |

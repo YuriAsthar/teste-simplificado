@@ -8,6 +8,7 @@ use App\Exceptions\NotificationException;
 use App\Models\Transfer;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 final readonly class NotificationService
 {
@@ -33,11 +34,20 @@ final readonly class NotificationService
             );
         }
 
-        if (!$response->successful() || $response->json('status') !== 'success') {
+        if (!$response->successful()) {
             throw new NotificationException(
                 'Notification service returned non-success: HTTP ' . $response->status(),
                 $response->status(),
             );
         }
+
+        if ($response->body() !== '' && $response->json('status') !== 'success') {
+            throw new NotificationException(
+                'Notification service returned non-success status: ' . $response->json('status'),
+                $response->status(),
+            );
+        }
+
+        Log::info('Notification service returned success: HTTP ' . $response->status(), $payload);
     }
 }

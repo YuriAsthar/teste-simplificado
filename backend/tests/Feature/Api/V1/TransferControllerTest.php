@@ -380,21 +380,36 @@ final class TransferControllerTest extends TestCase
             ->assertJsonValidationErrors(['idempotency_key']);
     }
 
-    public function test_it_returns_validation_error_when_payer_is_missing(): void
+    public function test_it_auto_populates_payer_with_authenticated_user_id_when_missing(): void
     {
+        Http::fake([
+            'https://util.devi.tools/api/v2/authorize' => Http::response([
+                'data' => ['authorization' => true],
+            ], 200),
+        ]);
+        Queue::fake();
+
         $payer = User::factory()->create();
+        $payee = User::factory()->create();
+
+        $payer->wallet->forceFill(['balance' => 10000])->save();
 
         Sanctum::actingAs($payer);
 
         $response = $this->postJson('/api/v1/transfer', [
-            'payee' => $payer->id,
+            'payee' => $payee->id,
             'amount' => 1000,
         ], [
             'Idempotency-Key' => 'missing-payer',
         ]);
 
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['payer']);
+        $response->assertStatus(201)
+            ->assertJsonPath('data.status', TransferStatus::Completed->value);
+
+        $this->assertDatabaseHas('transfers', [
+            'payer_id' => $payer->id,
+            'payee_id' => $payee->id,
+        ]);
     }
 
     public function test_it_returns_validation_error_when_amount_is_invalid(): void

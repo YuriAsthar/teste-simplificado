@@ -69,6 +69,10 @@ final class SendNotificationJob implements ShouldQueue
             throw $exception;
         }
 
+        Log::info('Notification sent successfuly, updating notified_at column to now', [
+            'transfer_id' => $this->transferId,
+        ]);
+
         $transfer->forceFill(['notified_at' => now()])->save();
     }
 

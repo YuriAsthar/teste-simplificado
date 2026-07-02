@@ -10,9 +10,15 @@ final class CreateTransferRequest extends FormRequest
 {
     protected function prepareForValidation(): void
     {
-        $this->merge([
+        $mergeData = [
             'idempotency_key' => $this->header('Idempotency-Key'),
-        ]);
+        ];
+
+        if (!$this->has('payer')) {
+            $mergeData['payer'] = $this->user()?->id;
+        }
+
+        $this->merge($mergeData);
     }
 
     public function authorize(): bool

@@ -74,9 +74,7 @@ class KafkaTransferProcessor
             return;
         }
 
-        $this->dispatcher->dispatch(
-            new SendNotificationJob($numericTransferId)
-        )->onConnection('rabbitmq');
+        $this->dispatcher->dispatch(new SendNotificationJob($numericTransferId))->onConnection('rabbitmq');
 
         $this->markProcessed($transferId);
     }

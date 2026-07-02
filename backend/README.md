@@ -188,6 +188,12 @@ Após uma transferência ser concluída:
 | `php artisan cleanup:stale-idempotency-keys` | Remove chaves de idempotência expiradas |
 | `php artisan kafka:produce-transfer` | Comando de debug para produzir mensagem no Kafka |
 
+### Banco de dados
+
+| Comando | Descrição |
+|---------|-----------|
+| `docker compose exec db psql -U wallet_user -d wallet` | Acessar o shell do PostgreSQL dentro do container `db` |
+
 ---
 
 ## Ferramentas de Qualidade
@@ -221,12 +227,10 @@ As principais já vêm preenchidas em `.env.example`:
 | `QUEUE_CONNECTION` | `rabbitmq` |
 | `CACHE_STORE` | `redis` |
 | `RABBITMQ_HOST` / `_PORT` / `_USER` / `_PASSWORD` | Configuração do RabbitMQ |
-| `KAFKA_BROKERS` | `kafka:9092` |
-| `KAFKA_TOPIC_COMPLETED` | `wallet.transfer.completed` |
-| `KAFKA_TOPIC_DLQ` | `wallet.transfer.dlq` |
-| `KAFKA_TOPIC_RETRY` | `wallet.transfer.retry` |
-| `KAFKA_IDEMPOTENCY_TTL` | TTL de idempotência Kafka (segundos) |
-| `KAFKA_RETRY_ATTEMPTS` / `KAFKA_RETRY_BACKOFF_SECONDS` | Retry do consumidor Kafka |
+| `KAFKA_BROKERS` | Broker Kafka (default via `config/kafka.php`: `kafka:9092` no Docker) |
+| `KAFKA_TOPIC_COMPLETED` / `KAFKA_TOPIC_DLQ` / `KAFKA_TOPIC_RETRY` | Tópicos Kafka (padrão em `config/kafka.php`) |
+| `KAFKA_IDEMPOTENCY_TTL` | TTL de idempotência Kafka (segundos; default em `config/kafka.php`) |
+| `KAFKA_RETRY_ATTEMPTS` / `KAFKA_RETRY_BACKOFF_SECONDS` | Retry do consumidor Kafka (defaults em `config/kafka.php`) |
 
 ---
 

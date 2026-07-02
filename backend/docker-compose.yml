@@ -20,6 +20,8 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
+      kafka:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "nc -z 127.0.0.1 9000 || bash -c '</dev/tcp/127.0.0.1/9000'"]
       interval: 5s
@@ -29,6 +31,11 @@ services:
     environment:
       - APP_ENV=sandbox
       - APP_DEBUG=true
+      - QUEUE_CONNECTION=rabbitmq
+      - CACHE_STORE=redis
+      - REDIS_HOST=redis
+      - RABBITMQ_HOST=rabbitmq
+      - KAFKA_BROKERS=kafka:9092
 
   web:
     image: nginx:1.25-alpine

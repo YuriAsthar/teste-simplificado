@@ -20,18 +20,18 @@ Aplicação **API-only** em **Laravel 13** para carteira digital e transferênci
 
 ## Stack / Infraestrutura
 
-Definida em [`docker-compose.yml`](https://github.com/asthar/Projetos/DesafioBackend/teste-simplificado/docker-compose.yml) na raiz do repositório:
+Definida em [`docker-compose.yml`](./docker-compose.yml) dentro de `backend/`:
 
 | Serviço | Imagem | Porta / Observação |
 |---------|--------|--------------------|
-| `app` | `php:8.4-fpm` (Dockerfile na raiz) | FPM 9000, monta `./backend` em `/var/www/html` |
+| `app` | `php:8.4-fpm` (Dockerfile em `backend/`) | FPM 9000, monta `.` em `/var/www/html` |
 | `web` | `nginx:1.25-alpine` | `${NGINX_HOST_PORT:-8080}:80` |
 | `db` | `postgres:16` | banco `wallet_sandbox`, usuário `wallet_user` |
 | `redis` | `redis:7-alpine` | cache e sessões |
 | `rabbitmq` | `rabbitmq:3-management` | fila de jobs/notificações |
 | `kafka` | `confluentinc/cp-kafka:7.7.1` | publicação de eventos de transferência |
 
-> O `Dockerfile` fica na raiz do repositório, **não** dentro de `backend/`.
+> O `Dockerfile` e o `docker-compose.yml` ficam dentro de `backend/`.
 
 ---
 
@@ -132,31 +132,26 @@ Após uma transferência ser concluída:
 
 ## Setup Local
 
-1. Copie o `.env` da raiz (define `NGINX_HOST_PORT`):
+1. Copie o `.env.example` de `backend/` para `.env` (define `NGINX_HOST_PORT`):
 
    ```bash
+   cd backend
    cp .env.example .env
    ```
 
-2. Copie o `.env` do backend:
-
-   ```bash
-   cp backend/.env.example backend/.env
-   ```
-
-3. Suba a stack (o Dockerfile da raiz é usado):
+2. Suba a stack (o Dockerfile de `backend/` é usado):
 
    ```bash
    docker compose up -d --build
    ```
 
-4. Gere a chave da aplicação:
+3. Gere a chave da aplicação:
 
    ```bash
    docker compose run --rm app php artisan key:generate
    ```
 
-5. Execute as migrations:
+4. Execute as migrations:
 
    ```bash
    docker compose run --rm app php artisan migrate --force
@@ -216,7 +211,7 @@ Não há build frontend; a CI roda apenas os scripts Composer listados acima.
 
 ## Variáveis de Ambiente Relevantes
 
-As principais já vêm preenchidas em `backend/.env.example`:
+As principais já vêm preenchidas em `.env.example`:
 
 | Variável | Significado |
 |----------|-------------|

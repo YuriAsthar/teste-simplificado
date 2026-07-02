@@ -24,5 +24,5 @@ docker compose run --rm app ./vendor/bin/phpunit --filter=AuthorizerClientTest
 ```
 
 ## Related
-- Parent: /backend/agents.md
-- Children: /backend/tests/Feature/agents.md, /backend/tests/Unit/agents.md
+- Parent: ./agents.md
+- Children: ./tests/Feature/agents.md, ./tests/Unit/agents.md

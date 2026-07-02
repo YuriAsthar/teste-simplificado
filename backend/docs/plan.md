@@ -456,7 +456,6 @@ public function __invoke(CreateTransferRequest $request): JsonResponse
 #### Static analysis commands
 
 ```bash
-cd backend
 ./vendor/bin/phpstan analyse --memory-limit=1G
 ./vendor/bin/rector process --dry-run
 ./vendor/bin/ecs check app/Services/WalletTransferService.php app/Models/OutboxEvent.php app/Console/Commands/PublishOutboxEventsCommand.php app/Services/IdempotencyKeyService.php app/Http/Controllers/Api/V1/TransferController.php

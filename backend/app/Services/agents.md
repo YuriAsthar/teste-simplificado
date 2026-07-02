@@ -25,5 +25,5 @@ Business-logic services. The directory contains both the legacy Kafka/publisher 
 - `outbox:publish` runs every minute via scheduler with `WithoutOverlapping` to prevent concurrent execution in production.
 
 ## Related
-- Parent: /backend/agents.md
-- Related: /backend/app/Models/agents.md, /backend/app/Http/Controllers/Api/V1/agents.md
+- Parent: ./agents.md
+- Related: ./app/Models/agents.md, ./app/Http/Controllers/Api/V1/agents.md

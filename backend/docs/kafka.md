@@ -33,7 +33,7 @@ The `docker-compose.yml` enables `KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'`, so t
 | `wallet.transfer.dlq` | Dead-letter queue for malformed/failed messages |
 | `wallet.transfer.retry` | Retry topic for failed transfer events |
 
-Configure them in `app/config/kafka.php` or via `.env`:
+Configure them in `config/kafka.php` or via `.env`:
 
 ```dotenv
 KAFKA_TOPIC_COMPLETED=wallet.transfer.completed
@@ -184,7 +184,7 @@ Set `KAFKA_COMMIT_AFTER_HANDLE=false` to fall back to auto-commit.
 
 ## Testing
 
-Integration tests run against a real Kafka broker. Configure the broker in `app/.env.testing` or pass it at runtime:
+Integration tests run against a real Kafka broker. Configure the broker in `.env.testing` or pass it at runtime:
 
 ```dotenv
 KAFKA_INTEGRATION_BROKER=kafka:9092

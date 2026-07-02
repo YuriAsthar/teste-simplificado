@@ -1,90 +1,76 @@
-# Laravel Application
+# Docker Laravel Infrastructure
 
 ## Overview
-Laravel 13 API-only wallet/transfer application. It exposes a JSON API for authentication and money transfers on top of PostgreSQL, Redis, RabbitMQ and Kafka infrastructure. There is no Blade/web frontend and all public API endpoints are under `/api/v1`.
+Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kafka, and Nginx.
 
 ## Structure
 | File/Folder | Purpose | Type |
 |-------------|---------|------|
-| `app/Casts/` | Custom Eloquent casts (e.g. MoneyCast). | PHP |
-| `app/Console/Commands/` | Artisan operational commands, including `outbox:publish`. | PHP |
-| `app/Enums/` | Backed enums: CurrencyType, UserType, DocumentType (Stripe-standard tax IDs), TransferStatus, FailureReason, IdempotencyKeyStatus, AuthorizerResult, OutboxStatus. | PHP |
-| `app/Events/` | Domain events (UserCreated). | PHP |
-| `app/Exceptions/` | Domain HTTP exceptions: `IdempotencyKeyInProgressException`, `IdempotencyKeyFingerprintMismatchException`, `TransientAuthorizerException`, `NotificationException`. | PHP |
-| `app/Http/Controllers/Api/V1/` | API controllers: RegisterController, TokenController, TransferController, LogoutController. | PHP |
-| `app/Http/Requests/` | FormRequest validation classes. | PHP |
-| `app/Http/Resources/` | API response resources (e.g. RegisterResponseResource). | PHP |
-| `app/Rules/` | Custom `ValidationRule` implementations (e.g. CpfRule, CnpjRule, ValidateEmail). | PHP |
-| `app/ValueObjects/` | Immutable DTOs carrying validated request data into services (RegisterData, DocumentData). | PHP |
-| `app/Jobs/` | Queueable notification jobs (`SendNotificationJob`). | PHP |
-| `app/Listeners/` | Event listeners (CreateUserWallet). | PHP |
-| `app/Models/` | Eloquent models: User, Wallet, Transfer, IdempotencyKey, OutboxEvent. | PHP |
-| `app/Providers/` | Service providers. | PHP |
-| `app/Services/` | Business-logic services including AuthorizerClient, NotificationService, LoginService, RegisterService, WalletTransferService, IdempotencyKeyService, OutboxPublisher, and Kafka/RabbitMQ messaging services. | PHP |
-| `app/Support/` | Domain helpers (e.g. MoneyParser). | PHP |
-| `config/transfer.php` | Transfer-specific configuration (idempotency processing TTL). | PHP |
-| `config/outbox.php` | Outbox retry/max-attempts configuration. | PHP |
-| `bootstrap/app.php` | Application bootstrap (API-only routing setup). | PHP |
-| `config/` | Configuration files including services.php and sanctum.php. | PHP |
-| `database/factories/` | Model factories. | PHP |
-| `database/migrations/` | Database migrations. | PHP |
-| `database/migrations/2026_07_02_400000_normalize_document_values.php` | Backfills legacy CPF/CNPJ `document_value` records to canonical form. | PHP |
-| `routes/api.php` | API routes (served under `/api/v1`). | PHP |
-| `routes/web.php` | Minimal JSON health-check route only. | PHP |
-| `tests/` | PHPUnit unit and feature tests. | Directory |
+| `.` | Laravel application code | Directory |
+| `./docker` | Docker configurations | Directory |
+| `./docker/nginx/default.conf` | Nginx server configuration | Config |
+| `./docker/init-multi-db.sql` | Database initialization script | SQL |
+| `./Dockerfile` | PHP 8.4-FPM container definition with PHP-FPM healthcheck support; installs `pdo_pgsql`, `pgsql`, `zip`, and `sockets` PHP extensions | Docker |
+| `./docker-compose.yml` | Multi-service orchestration with service_healthy dependency | Docker Compose |
+| `./.env.example` | Compose host port template (NGINX_HOST_PORT) and Laravel sandbox environment template | Config |
+| `./.env.testing` | Testing environment config | Config |
+| `./ecs.php` | EasyCodingStandard configuration | Config |
+| `./phpstan.neon` | PHPStan analysis configuration | Config |
+| `./phpstan-baseline.neon` | PHPStan baseline rules | Config |
+| `./rector.php` | Rector refactoring configuration | Config |
+| `./phpmd.xml` | PHPMD ruleset and exclusions | Config |
+| `./agents.md` | Laravel application documentation | Doc |
+
+## Services
+- **app**: PHP 8.4-FPM with Laravel 13
+- **web**: Nginx reverse proxy (configurable host port via `NGINX_HOST_PORT`, default 8080)
+- **db**: PostgreSQL 16 (port 6432)
+- **redis**: Redis 7 (port 7379)
+- **rabbitmq**: RabbitMQ 3 Management (ports 6672, 16672)
+- **kafka**: Kafka broker (port 10092)
 
 ## Conventions
-- All money stored as `bigint` cents; never use float for money.
-- API money input is accepted as integer cents (`amount`, > 0). `MoneyCast` is strict `int`/`int`; assignments must be integer cents.
-- `POST /api/v1/transfer` requires the `Idempotency-Key` header (non-empty string) and the `amount` integer field; legacy decimal `value` is rejected. The authenticated user must match the `payer`; otherwise a 403 is returned.
-- Idempotency key request hash = SHA-256 of fixed-order `payer_id:payee_id:amount`; the `idempotency_keys` table stores `endpoint`, `request_hash`, `response_status`, and `response_body`. On replay with a completed key whose hash matches, the cached HTTP response (status + body) is returned.
-- Transient authorizer failures (connection errors / 5xx / 503) return HTTP 503, are rendered by global exception handlers, and the processing idempotency row is removed so the client can retry. Authorizer rejection returns HTTP 422.
-- Failed idempotency-guarded transfers are persisted, and replays return the persisted failed transfer.
-- Completed transfers write a `transfer.completed` event into the `outbox_events` table within the same DB transaction. A scheduled `outbox:publish --batch=100` command (with `WithoutOverlapping`) polls pending events and publishes them to Kafka.
-- Kafka consumers read `wallet.transfer.completed`, deduplicate via Redis `kafka:transfer:{transfer_id}`, and dispatch `SendNotificationJob` via the RabbitMQ connection. If the transfer is missing or not completed, the message is marked processed to avoid endless redelivery.
-- `notified_at` on the `Transfer` model is the final idempotency guard inside `SendNotificationJob::handle()`.
-- Notification failures are logged and retried through RabbitMQ; they do not break transfer completion.
-- Business logic lives in service classes; controllers are thin.
-- Validation uses `FormRequest` classes.
-- Use backed enums for domain values.
-- Prefer constructor injection and typed signatures.
-- External HTTP clients (AuthorizerClient, NotificationClient) use `Http::timeout()`; AuthorizerClient returns an `AuthorizerResult` enum (`Authorized`, `Rejected`, `Transient`) instead of throwing on transient responses.
-- AuthorizerClient retries only on `ConnectionException` with a single exponential backoff.
-- API-only: no Blade views, web login routes, dashboard, query-string tokens, or session/cookie auth.
-- Authentication is stateless via Sanctum bearer tokens: obtain a token at `POST /api/v1/auth/login`, then send `Authorization: Bearer <token>`. New accounts are created at `POST /api/v1/auth/register` (public route), which also returns a bearer token. Registration accepts an optional `type` (`common` or `merchant`) and three required document fields: `document_country` (3-letter ISO code), `document_type` (Stripe-standard tax ID code), and `document_value`. The provided document type must be valid for the given country and is validated against `DocumentType`. For Brazilian documents, `document_value` is algorithmically validated: `br_cpf` must be a valid CPF and `br_cnpj` must be a valid CNPJ. Both formatted (e.g. `529.982.247-25`, `11.222.333/0001-81`) and unformatted values are accepted during validation; the value is stored exactly as submitted. The `2026_07_02_400000_normalize_document_values` migration backfills legacy records to canonical form.
+- All Docker commands use `docker compose run --rm` (never exec)
+- Laravel runs as www-data user
+- Database migrations use healthcheck dependency
+- Alternative ports used to avoid conflicts (64xx, 73xx, 66xx, 166xx, 10092)
 
-## Cache / QA Tool Artifacts
-- The following tool caches are ignored and must not be committed:
-  - PHPUnit: `.phpunit.cache/`, `.phpunit.result.cache`
-  - PHPStan / Larastan: `/storage/phpstan/`, `phpstan.result.cache`
-  - Rector: `/storage/rector/`
-  - ECS: `/.ecs_cache/`
-  - PHPMD: `.phpmd.cache`
-  - Generic: `*.cache.json`, `*.result.cache`
-- These are listed in `.gitignore`.
+## Setup
+1. Copy `.env.example` to `.env` to set `NGINX_HOST_PORT` (default 8080) and configure the Laravel sandbox environment.
+2. Generate an `APP_KEY`: `docker compose run --rm app php artisan key:generate`.
+3. Start stack with `docker compose up -d --build`.
+4. Fix volume ownership: `docker compose run --rm --user root app chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache`.
+5. Run migrations: `docker compose run --rm app php artisan migrate --force`.
 
 ## Commands
 ```bash
+# Start stack
+docker compose up -d
+
+# Run artisan commands
+docker compose run --rm app php artisan <command>
+
 # Run migrations
 docker compose run --rm app php artisan migrate
+docker compose run --rm app php artisan migrate --env=testing
 
-# Operational commands
-docker compose run --rm app php artisan outbox:publish --batch=100
-
-# Quality tools
+# Quality tools (run inside app container for local development)
 docker compose run --rm app composer lint
 docker compose run --rm app composer lint-fix
 docker compose run --rm app composer stan
 docker compose run --rm app composer rector
-docker compose run --rm app composer phpmd
 docker compose run --rm app composer test
+docker compose run --rm app composer phpmd
+
+# CI note: GitHub Actions runs the same composer scripts natively on the runner
+# using shivammathur/setup-php + ramsey/composer-install (standard Laravel pattern).
 ```
 
-## Setup
-- Copy `/.env.example` to `/.env` to configure the Nginx host port (`NGINX_HOST_PORT`, default 8080).
-- Copy `/backend/.env.example` to `/backend/.env` and run `docker compose run --rm app php artisan key:generate`.
-- All Docker commands use `docker compose run --rm` (never exec).
-- Manual volume ownership fix is unnecessary; the Dockerfile already chowns storage/cache to `www-data`.
+## API Versioning
+- The application is API-only: no Blade/web frontend, dashboard, login pages, query-string tokens, or session/cookie auth.
+- All API endpoints are under `/api/v1`.
+- Authentication is stateless via Sanctum bearer tokens: `POST /api/v1/auth/login` issues tokens; protected routes require `Authorization: Bearer <token>`. Account creation is public at `POST /api/v1/auth/register`, which also returns a bearer token. Registration requires three document fields: `document_country`, `document_type`, and `document_value`; `document_type` is validated against `DocumentType` and must be allowed for the provided country.
 
 ## Related
+- Self: ./agents.md
 - Parent: ../agents.md

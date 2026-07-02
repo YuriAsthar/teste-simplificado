@@ -16,5 +16,5 @@ REST API controllers for version 1 of the payment domain.
 - This is an API-only surface: no Blade responses, session flash, or cookie-based auth.
 
 ## Related
-- Parent: /backend/agents.md
-- Related: /backend/app/Http/Requests/agents.md, /backend/app/Services/agents.md
+- Parent: ./agents.md
+- Related: ./app/Http/Requests/agents.md, ./app/Services/agents.md

@@ -8,6 +8,7 @@ use App\Exceptions\NotificationException;
 use App\Models\Transfer;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 final readonly class NotificationService
 {
@@ -46,5 +47,7 @@ final readonly class NotificationService
                 $response->status(),
             );
         }
+
+        Log::info('Notification service returned success: HTTP '. $response->status(), $payload);
     }
 }

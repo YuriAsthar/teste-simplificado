@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Log;
 final readonly class TransferController
 {
     public function __construct(
-        private readonly WalletTransferService $service,
-        private readonly IdempotencyKeyService $idempotencyService,
+        private WalletTransferService $service,
+        private IdempotencyKeyService $idempotencyService,
     ) {
     }
 

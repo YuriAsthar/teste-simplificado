@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 final readonly class LogoutController
 {
     public function __construct(
-        private readonly LogoutService $logoutService,
+        private LogoutService $logoutService,
     ) {
     }
 

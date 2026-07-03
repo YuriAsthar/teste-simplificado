@@ -213,6 +213,11 @@ Não há build frontend; a CI roda apenas os scripts Composer listados acima.
 - **Models:** `User`, `Wallet` (`MoneyCast` no `balance`), `Transfer`, `IdempotencyKey`, `OutboxEvent`.
 - **Enums:** `UserType`, `DocumentType`, `CurrencyType`, `TransferStatus`, `FailureReason`, `IdempotencyKeyStatus`, `OutboxStatus`, `AuthorizerResult`.
 
+## Convenções de Código
+
+### Modelos Eloquent
+Todos os modelos utilizam a sintaxe tradicional de propriedades (`protected $fillable`, `protected $hidden`) em vez dos atributos PHP 8 do Laravel 13 (`#[Fillable(...)]`, `#[Hidden(...)]`). Essa escolha mantém consistência com o restante do projeto e facilita a leitura para desenvolvedores familiarizados com versões anteriores do framework.
+
 ---
 
 ## Variáveis de Ambiente Relevantes

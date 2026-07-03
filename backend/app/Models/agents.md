@@ -16,6 +16,10 @@ Eloquent models for the relational wallet/transfer domain.
 - Soft deletes are used on `User` and `Wallet`.
 - Scopes are prefixed with `scope` and typed with generics.
 
+## Model Properties
+- All models use traditional `protected $fillable` and `protected $hidden` properties.
+- Do **not** use Laravel 13 `#[Fillable(...)]` or `#[Hidden(...)]` attributes; they are functionally equivalent but create inconsistency with the rest of the project.
+
 ## Related
 - Parent: /app/agents.md
 - Related: /app/Casts/agents.md, /app/Enums/agents.md, /app/database/migrations/agents.md

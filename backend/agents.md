@@ -35,6 +35,25 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 - Database migrations use healthcheck dependency
 - Alternative ports used to avoid conflicts (64xx, 73xx, 66xx, 166xx, 10092)
 
+## Clean Code Conventions
+
+### No Inline Comments
+- Code must be self-explanatory through naming and structure.
+- Do NOT use `//` inline comments to explain what code does.
+- Docblocks (`/** */`) are allowed for API documentation only.
+- If logic needs explanation, refactor the code (rename variables, extract methods) rather than adding comments.
+
+### Logging Imports
+- Always add `use Illuminate\Support\Facades\Log;` when calling `Log::` in namespaced classes.
+- Never rely on unqualified `Log` inside a namespace (e.g. `App\Services`): PHP resolves it as `App\Services\Log`, which does not exist.
+
+### PHPMD
+- Do not suppress PHPMD warnings with `@SuppressWarnings` annotations; address the root cause instead.
+- If a class name triggers `LongClassName`, shorten the name rather than suppressing the rule.
+
+### Eloquent Model Attributes
+- Prefer `protected $fillable` and `protected $hidden` over Laravel 13 `#[Fillable]` / `#[Hidden]` attributes for consistency across the codebase.
+
 ## Setup
 1. Copy `.env.example` to `.env` to set `NGINX_HOST_PORT` (default 8080) and configure the Laravel sandbox environment.
 2. Generate an `APP_KEY`: `docker compose run --rm app php artisan key:generate`.

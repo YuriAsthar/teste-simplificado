@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Console;
 
-use App\Contracts\TransferPublisherInterface;
-use App\Services\DryRun\DryRunContext;
 use App\Services\TransferMessageConsumer;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
-use Junges\Kafka\Contracts\ConsumerMessage;
+use Junges\Kafka\Contracts\MessageConsumer;
 use Junges\Kafka\Facades\Kafka;
 use Junges\Kafka\Message\ConsumedMessage;
+use Mockery;
 use Tests\TestCase;
 
 final class ConsumeTransfersCommandTest extends TestCase
 {
-    public function test_dry_run_enables_context_and_forces_manual_commit(): void
+    public function test_dry_run_does_not_commit_and_passes_flag_to_consumer(): void
     {
         Kafka::fake();
 
@@ -38,15 +37,23 @@ final class ConsumeTransfersCommandTest extends TestCase
             ),
         ]);
 
+        $consumer = $this->instance(TransferMessageConsumer::class, $this->mock(TransferMessageConsumer::class));
+        $consumer->shouldReceive('consume')
+            ->once()
+            ->with($message, true);
+
+        $messageConsumer = Mockery::mock(MessageConsumer::class);
+        $messageConsumer->shouldReceive('commit')
+            ->never();
+
         $this->artisan('kafka:consume-transfers', ['--dry-run' => true])
             ->assertSuccessful()
             ->expectsOutputToContain('[DRY-RUN] Enabled')
-            ->expectsOutputToContain('rabbitmq.dispatch');
-
-        $this->assertTrue(app(DryRunContext::class)->isEnabled());
+            ->expectsOutputToContain('[DRY-RUN] Kafka consumer will not commit offsets')
+            ->expectsOutputToContain('[DRY-RUN] Kafka offset commit skipped');
     }
 
-    public function test_normal_mode_does_not_output_dry_run_lines(): void
+    public function test_normal_mode_commits_offset_after_processing(): void
     {
         Kafka::fake();
 
@@ -69,12 +76,14 @@ final class ConsumeTransfersCommandTest extends TestCase
             ),
         ]);
 
+        $consumer = $this->instance(TransferMessageConsumer::class, $this->mock(TransferMessageConsumer::class));
+        $consumer->shouldReceive('consume')
+            ->once()
+            ->with($message, false);
+
         $this->artisan('kafka:consume-transfers')
             ->assertSuccessful()
-            ->doesntExpectOutputToContain('[DRY-RUN] Enabled')
-            ->doesntExpectOutputToContain('rabbitmq.dispatch');
-
-        $this->assertFalse(app(DryRunContext::class)->isEnabled());
+            ->doesntExpectOutputToContain('[DRY-RUN] Enabled');
     }
 
     /**

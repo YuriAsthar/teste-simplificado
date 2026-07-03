@@ -10,7 +10,7 @@ Database schema definitions for users, wallets, transfers, cache, jobs, and idem
 - `2026_06_30_171500_update_transfers_table_for_user_transfers.php` — Updates transfers table for user-level transfers.
 - `2026_06_30_171600_create_idempotency_keys_table.php` — Creates idempotency keys table for transfer deduplication.
 - `2026_06_30_201621_rename_balance_and_amount_columns.php` — Renames `balance_cents` → `balance` and `amount_cents` → `amount`; adds CHECK constraints.
-- `2026_07_02_000000_add_status_and_fingerprint_to_idempotency_keys.php` — Adds `status` and `fingerprint` columns, indexes both, and backfills legacy rows: linked transfers become `Completed` with a SHA-256 fingerprint of `payer_id:payee_id:amount`; rows without a transfer become `Completed` with `fingerprint = null`.
+- `2026_07_02_000000_add_status_and_request_hash_to_idempotency_keys.php` — Adds `status` and `request_hash` columns, indexes `status`, and backfills legacy rows: linked transfers become `Completed` with a SHA-256 request_hash of `payer_id:payee_id:amount`; rows without a transfer become `Completed` with `request_hash = null`.
 - `2026_07_02_100000_relax_transfer_constraints_for_failed_records.php` — Removes foreign keys on `transfers.payer_id` and `transfers.payee_id` and relaxes the amount check to `>= 0` so failed transfer records can persist missing users and invalid amounts.
 - `0001_01_01_000001_create_cache_table.php`, `0001_01_01_000002_create_jobs_table.php` — Laravel cache and queue tables.
 

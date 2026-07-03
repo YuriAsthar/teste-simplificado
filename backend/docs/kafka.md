@@ -33,7 +33,7 @@ The `docker-compose.yml` enables `KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'`, so t
 |-------|---------|
 | `wallet.transfer.completed` | Successfully authorized transfers |
 | `wallet.transfer.dlq` | Dead-letter queue for malformed/failed messages |
-| `wallet.transfer.retry` | Retry topic for failed transfer events |
+| `wallet.transfer.retry` | Retry topic (escrito pelo consumidor, mas **não consumido** neste sandbox) |
 
 Configure them in `config/kafka.php` or via `.env`:
 
@@ -43,7 +43,6 @@ KAFKA_TOPIC_DLQ=wallet.transfer.dlq
 KAFKA_TOPIC_RETRY=wallet.transfer.retry
 KAFKA_RETRY_ATTEMPTS=3
 KAFKA_RETRY_BACKOFF_SECONDS=60
-KAFKA_CONSUMER_GROUP_ID_RETRY=wallet-transfer-consumers-retry
 ```
 
 ## Message Envelope
@@ -71,30 +70,6 @@ The Kafka message key is the `transfer_id`, which guarantees ordering for a sing
 
 ## Commands
 
-### Produce a manual transfer event
-
-```bash
-docker compose run --rm app php artisan kafka:produce-transfer {payer_id} {payee_id} {amount_cents}
-```
-
-Example:
-
-```bash
-docker compose run --rm app php artisan kafka:produce-transfer 1 2 5000
-```
-
-All arguments must be positive integers. This command is intended for **local development and manual testing only**; it bypasses authorization, balance checks, and API validation.
-
-#### Preview mode with `--dry-run`
-
-Add `--dry-run` to print the envelope without actually publishing to Kafka:
-
-```bash
-docker compose run --rm app php artisan kafka:produce-transfer 1 2 5000 --dry-run
-```
-
-In dry-run mode the command builds the message envelope and prints the topic, key, and JSON envelope, but it does not send anything to Kafka.
-
 ### Consume transfer events
 
 ```bash
@@ -114,38 +89,16 @@ In dry-run mode the consumer:
 - Does **not** commit Kafka offsets.
 - Does **not** dispatch the `SendNotificationJob` to RabbitMQ.
 - Does **not** write the Redis idempotency marker.
-- Prints each action that would have happened as `[DRY-RUN] {action}: {context_json}`.
-
-### Consume retry events
-
-```bash
-docker compose run --rm app php artisan kafka:consume-retry-transfers
-```
-
-The retry consumer reads from `wallet.transfer.retry`. Each retry message carries `meta.retry.attempt` and `meta.retry.scheduled_at`. The consumer sleeps until `scheduled_at` is reached, then reprocesses the transfer. If reprocessing fails, the message is either retried again or sent to the DLQ once `KAFKA_RETRY_ATTEMPTS` is exceeded.
-
-#### Preview mode with `--dry-run`
-
-```bash
-docker compose run --rm app php artisan kafka:consume-retry-transfers --dry-run
-```
-
-In dry-run mode the retry consumer:
-
-- Does **not** sleep until the scheduled time.
-- Still calls `TransferProcessor` so you can preview what would happen, but `TransferProcessor` does not dispatch or write idempotency markers.
-- Does **not** commit Kafka offsets.
-- Prints each recorded action as `[DRY-RUN] {action}: {context_json}`.
+- Does **not** publish retry or DLQ messages.
+- Logs each skipped action as `[DRY-RUN] ...` via `Log::info` / `Log::warning`.
 
 ## Dry-run summary
 
-All three Kafka artisan commands support `--dry-run`:
+The `kafka:consume-transfers` command supports `--dry-run`:
 
 | Command | `--dry-run` behavior |
 |---------|----------------------|
-| `kafka:produce-transfer` | Builds and prints the envelope; does not publish to Kafka. |
 | `kafka:consume-transfers` | Skips RabbitMQ dispatch, idempotency write, and offset commits. |
-| `kafka:consume-retry-transfers` | Skips the scheduled wait, RabbitMQ dispatch, idempotency write, and offset commits. |
 
 **Important:** Dry-run output may include PII or financial data (`payer_id`, `payee_id`, `amount_cents`, `transfer_id`) depending on the payload. Treat `--dry-run` output with the same care as production logs and avoid sharing it in public channels.
 
@@ -156,9 +109,7 @@ When the main consumer (`kafka:consume-transfers`) fails to process a transfer, 
 1. Publishes a new message to `wallet.transfer.retry` with `meta.retry.attempt` incremented and `meta.retry.scheduled_at` set to `now + KAFKA_RETRY_BACKOFF_SECONDS`.
 2. Sends the original message to `wallet.transfer.dlq` when the attempt limit is reached.
 
-The retry consumer (`kafka:consume-retry-transfers`) then waits until `scheduled_at` before reprocessing the transfer. Malformed retry messages (missing `meta`, missing `retry` metadata, or unparseable `scheduled_at`) are sent directly to the DLQ.
-
-Retries are **bounded**: `KAFKA_RETRY_ATTEMPTS` defaults to `3`, so the sequence is attempt `0` (original) → `1` → `2` → `3` → DLQ. The delay between each retry is `KAFKA_RETRY_BACKOFF_SECONDS` (default `60`).
+**This sandbox does not consume the `wallet.transfer.retry` topic.** Messages published to it remain in the topic until they are inspected manually (e.g., via `kafka-console-consumer`) or consumed by an external system. For production, add a dedicated retry worker command that reads from `wallet.transfer.retry` and reprocesses the transfers.
 
 ## Idempotency
 
@@ -176,13 +127,17 @@ TTL is controlled by `KAFKA_IDEMPOTENCY_TTL` (default 3600 seconds). This preven
 
 ## Offset Commit
 
-The consumer commits offsets **manually after successful processing** when `KAFKA_COMMIT_AFTER_HANDLE=true` (default). This gives at-least-once delivery semantics.
+The consumer commits offsets **manually after successful processing**. This gives at-least-once delivery semantics.
 
 **Trade-off:**
 - If the handler succeeds but the commit fails (crash, network error), the message will be redelivered and the Redis idempotency marker will skip the duplicate side effects.
 - The downside is that repeated commit failures can cause reprocessing until the idempotency TTL expires.
 
-Set `KAFKA_COMMIT_AFTER_HANDLE=false` to fall back to auto-commit.
+## Daemon mode
+
+Pass `--daemon` to run the consumer with `withMaxMessages()` set to `config('kafka.topics.wallet.transfer.completed.limit_messages', 100)`. Without `--daemon`, the consumer blocks naturally on `consume()` until the process is stopped.
+
+**Removed settings:** `KAFKA_TOPIC_COMPLETED_DELAY` and the per-topic `delay` field were removed because the previous sleep-based batch loop was replaced by a single long-lived consumer process.
 
 ## Testing
 
@@ -322,6 +277,6 @@ This Kafka setup is intentionally simple and **local-dev only**:
 - No Schema Registry.
 - No SASL/SSL.
 - No exactly-once semantics.
-- Retry scheduling relies on a consumer sleeping until `scheduled_at`, so a single long delay blocks that consumer partition. For production, move retry scheduling to an external queue or scheduler.
+- Retry scheduling is produced by the main consumer, but it is **not consumed in this sandbox**. For production, add a separate retry worker and scheduler.
 
 For production use, add authentication, schema management, bounded retry scheduling, and monitoring before enabling this in a real environment.

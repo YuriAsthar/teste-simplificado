@@ -18,7 +18,7 @@ final readonly class KafkaTransferPublisher implements TransferPublisherInterfac
         $message = (new Message(topicName: $topic))
             ->withBody($payload);
 
-        if ($key !== null && $key !== '') {
+        if (!is_null($key) && $key !== '') {
             $message = $message->withKey($key);
         }
 

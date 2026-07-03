@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Contracts\TransferPublisherInterface;
+use App\DTOs\TransferMessagePayload;
 use Carbon\Carbon;
-use DateTimeInterface;
+use Illuminate\Support\Facades\Log;
 
 class TransferRetryPolicy
 {
@@ -17,16 +18,38 @@ class TransferRetryPolicy
 
     public function shouldRetry(int $attempt): bool
     {
-        return $attempt < $this->getRetryAttempts();
+        $maxRetries = $this->getRetryAttempts();
+        $willRetry = $attempt < $maxRetries;
+
+        if ($willRetry) {
+            Log::info('Retry attempt incremented.', [
+                'current_attempt' => $attempt,
+                'max_retries' => $maxRetries,
+            ]);
+
+            return true;
+        }
+
+        Log::warning('Max retries reached.', [
+            'current_attempt' => $attempt,
+            'max_retries' => $maxRetries,
+        ]);
+
+        return false;
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     */
-    public function publishRetry(string $transferId, array $payload, int $attempt, string $reason): void
+    public function publishRetry(TransferMessagePayload $payload, int $attempt, string $reason): void
     {
         $nextAttempt = $attempt + 1;
         $scheduledAt = Carbon::now()->addSeconds($this->getRetryBackoffSeconds());
+        $transferId = (string) $payload->transferId;
+
+        Log::info('Publishing transfer retry message.', [
+            'transfer_id' => $transferId,
+            'next_attempt' => $nextAttempt,
+            'scheduled_at' => $scheduledAt->toIso8601String(),
+            'reason' => $reason,
+        ]);
 
         $envelope = [
             'meta' => [
@@ -39,7 +62,7 @@ class TransferRetryPolicy
                 ],
                 'reason' => $reason,
             ],
-            'payload' => $payload,
+            'payload' => $payload->toArray(),
         ];
 
         $this->publisher->publish($this->getRetryTopic(), $envelope, $transferId);
@@ -50,6 +73,15 @@ class TransferRetryPolicy
      */
     public function publishDlq(array $body, string $reason): void
     {
+        $transferId = is_array($body['payload'] ?? null)
+            ? ($body['payload']['transfer_id'] ?? null)
+            : null;
+
+        Log::error('Publishing transfer message to DLQ.', [
+            'transfer_id' => is_int($transferId) || is_string($transferId) ? (string) $transferId : null,
+            'reason' => $reason,
+        ]);
+
         $envelope = [
             'meta' => [
                 'version' => '1.0',

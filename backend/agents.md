@@ -12,13 +12,13 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 | `./docker/init-multi-db.sql` | Database initialization script | SQL |
 | `./Dockerfile` | PHP 8.4-FPM container definition with PHP-FPM healthcheck support; installs `pdo_pgsql`, `pgsql`, `zip`, and `sockets` PHP extensions | Docker |
 | `./docker-compose.yml` | Multi-service orchestration with service_healthy dependency | Docker Compose |
-| `./.env.example` | Compose host port template (NGINX_HOST_PORT) and Laravel environment template; Kafka defaults live in `config/kafka.php` | Config |
-| `./.env.testing` | Testing environment config; overrides `KAFKA_BROKERS` for host-side test runners | Config |
+| `./.env.example` | Compose host port template (NGINX_HOST_PORT) and Laravel environment template; Kafka defaults live in `config/kafka.php`. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` was removed because `ConsumeTransfersCommand` no longer uses a sleep-based daemon loop. | Config |
+| `./.env.testing` | Testing environment config; overrides `KAFKA_BROKERS` for host-side test runners. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` and `KAFKA_CONSUMER_GROUP_ID_RETRY` were removed. | Config |
 | `./ecs.php` | EasyCodingStandard configuration | Config |
 | `./phpstan.neon` | PHPStan analysis configuration | Config |
 | `./phpstan-baseline.neon` | PHPStan baseline rules | Config |
 | `./rector.php` | Rector refactoring configuration | Config |
-| `./phpmd.xml` | PHPMD ruleset and exclusions | Config |
+| `./phpmd.xml` | PHPMD ruleset and exclusions (BooleanArgumentFlag and ElseExpression excluded for dry-run bool parameters) | Config |
 | `./agents.md` | Laravel application documentation | Doc |
 
 ## Services

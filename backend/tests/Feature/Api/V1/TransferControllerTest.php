@@ -348,7 +348,7 @@ final class TransferControllerTest extends TestCase
         IdempotencyKey::factory()->create([
             'key' => 'processing-key',
             'status' => IdempotencyKeyStatus::Processing,
-            'fingerprint' => hash('sha256', implode(':', [$payer->id, $payee->id, 1000])),
+            'request_hash' => hash('sha256', implode(':', [$payer->id, $payee->id, 1000])),
         ]);
 
         $response = $this->postJson('/api/v1/transfer', [

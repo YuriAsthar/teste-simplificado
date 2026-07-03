@@ -38,7 +38,7 @@ RUN groupmod -g ${GID} www-data && usermod -u ${UID} -g ${GID} www-data \
 # Switch to non-root user for FPM
 USER www-data
 
-# Expose PHP-FPM port
-EXPOSE 9000
+# Expose artisan serve port
+EXPOSE 8000
 
 CMD ["php-fpm"]

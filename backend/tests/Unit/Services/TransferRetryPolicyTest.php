@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\Contracts\TransferPublisherInterface;
+use App\DTOs\TransferMessagePayload;
 use App\Services\TransferRetryPolicy;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
@@ -38,9 +39,9 @@ final class TransferRetryPolicyTest extends TestCase
         $publisher = $this->createFakePublisher();
         $policy = new TransferRetryPolicy($publisher);
 
-        $payload = ['transfer_id' => 123, 'payer_id' => 1];
+        $payload = TransferMessagePayload::fromArray(['transfer_id' => 123, 'payer_id' => 1]);
 
-        $policy->publishRetry('123', $payload, 1, 'failed');
+        $policy->publishRetry($payload, 1, 'failed');
 
         $this->assertCount(1, $publisher->published);
         $this->assertSame('wallet.transfer.retry', $publisher->published[0]['topic']);

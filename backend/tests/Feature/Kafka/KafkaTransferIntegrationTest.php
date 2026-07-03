@@ -82,7 +82,6 @@ final class KafkaTransferIntegrationTest extends KafkaTestCase
         $this->assertNotNull($first);
         $this->assertSame($transferId, $first['body']['payload']['transfer_id']);
 
-        // Simulate idempotency marker as if consumer processed it
         Cache::store(config('kafka.cache_driver'))
             ->put('kafka:transfer:' . $transferId, true, 3600);
 
@@ -91,11 +90,8 @@ final class KafkaTransferIntegrationTest extends KafkaTestCase
             'Idempotency key should exist after first processing'
         );
 
-        // Produce duplicate message with same transfer_id
         $this->produceMessage($message['topic'], $message['envelope'], $message['key']);
 
-        // The same consumer group should skip the duplicate because the previous offset was committed;
-        // we verify via cache that idempotency would prevent reprocessing.
         $this->assertTrue(
             Cache::store(config('kafka.cache_driver'))->has('kafka:transfer:' . $transferId),
             'Duplicate transfer_id should still be flagged as already processed'
@@ -106,7 +102,6 @@ final class KafkaTransferIntegrationTest extends KafkaTestCase
 
     public function test_failed_message_is_sent_to_dlq(): void
     {
-        // Produce malformed envelope missing transfer_id in payload
         $malformed = [
             'meta' => [
                 'version' => '1.0',
@@ -130,7 +125,6 @@ final class KafkaTransferIntegrationTest extends KafkaTestCase
 
         $dlqConsumer = $this->subscribeToEnd(self::DLQ_TOPIC, 'test-dlq-consumer-' . uniqid());
 
-        // Simulate the consumer DLQ behavior directly in the test process
         $dlqEnvelope = [
             'meta' => [
                 'version' => '1.0',

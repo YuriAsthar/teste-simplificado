@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Resources\RegisterResponseResource;
 use App\Services\RegisterService;
 use Illuminate\Http\JsonResponse;
 
-final class RegisterController extends Controller
+final readonly class RegisterController
 {
     public function __construct(
         private RegisterService $registerService,

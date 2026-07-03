@@ -5,19 +5,14 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\IdempotencyKeyStatus;
-use App\Exceptions\IdempotencyKeyFingerprintMismatchException;
 use App\Exceptions\IdempotencyKeyInProgressException;
+use App\Exceptions\IdempotencyPayloadMismatchException;
 use App\Models\IdempotencyKey;
 use App\Models\Transfer;
 use Illuminate\Support\Facades\DB;
 
 final readonly class IdempotencyKeyService
 {
-    public function buildFingerprint(int $payerId, int $payeeId, int $amount): string
-    {
-        return $this->buildRequestHash($payerId, $payeeId, $amount);
-    }
-
     public function buildRequestHash(int $payerId, int $payeeId, int $amount): string
     {
         return hash('sha256', implode(':', [$payerId, $payeeId, $amount]));
@@ -39,7 +34,7 @@ final readonly class IdempotencyKeyService
      * @return array{record: IdempotencyKey, created: bool}
      *
      * @throws IdempotencyKeyInProgressException
-     * @throws IdempotencyKeyFingerprintMismatchException
+     * @throws IdempotencyPayloadMismatchException
      */
     public function acquireOrResolveIdempotencyKey(
         string $idempotencyKey,
@@ -60,10 +55,10 @@ final readonly class IdempotencyKeyService
                 throw new IdempotencyKeyInProgressException();
             }
 
-            $existingHash = $existing->request_hash ?? $existing->fingerprint;
+            $existingHash = $existing->request_hash;
 
             if ($existingHash !== $requestHash) {
-                throw new IdempotencyKeyFingerprintMismatchException();
+                throw new IdempotencyPayloadMismatchException();
             }
 
             if ($this->isStaleProcessingIdempotencyKey($existing)) {
@@ -90,10 +85,7 @@ final readonly class IdempotencyKeyService
             ->where('key', $idempotencyKey)
             ->where('status', IdempotencyKeyStatus::Completed)
             ->where('endpoint', $endpoint)
-            ->where(static function ($query) use ($requestHash): void {
-                $query->where('request_hash', $requestHash)
-                    ->orWhere('fingerprint', $requestHash);
-            })
+            ->where('request_hash', $requestHash)
             ->whereNotNull('response_status')
             ->first();
 
@@ -165,14 +157,13 @@ final readonly class IdempotencyKeyService
         string $requestHash,
     ): ?array {
         $results = DB::select(
-            'INSERT INTO idempotency_keys (key, status, request_hash, fingerprint, created_at, updated_at) '
-            . 'VALUES (?, ?, ?, ?, ?, ?) '
+            'INSERT INTO idempotency_keys (key, status, request_hash, created_at, updated_at) '
+            . 'VALUES (?, ?, ?, ?, ?) '
             . 'ON CONFLICT (key) DO NOTHING '
-            . 'RETURNING id, key, status, request_hash, fingerprint, transfer_id',
+            . 'RETURNING id, key, status, request_hash, transfer_id',
             [
                 $idempotencyKey,
                 IdempotencyKeyStatus::Processing->value,
-                $requestHash,
                 $requestHash,
                 now()->toDateTimeString(),
                 now()->toDateTimeString(),

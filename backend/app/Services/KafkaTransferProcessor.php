@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\TransferMessagePayload;
 use App\Enums\TransferStatus;
 use App\Jobs\SendNotificationJob;
 use App\Models\Transfer;
-use App\Services\DryRun\DryRunContext;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Log;
-use InvalidArgumentException;
 use Throwable;
 
 class KafkaTransferProcessor
@@ -21,48 +20,40 @@ class KafkaTransferProcessor
     public function __construct(
         private Dispatcher $dispatcher,
         private Repository $cache,
-        private DryRunContext $context,
     ) {
     }
 
     /**
-     * @param array<int|string, mixed> $payload
-     *
-     * @throws InvalidArgumentException
      * @throws Throwable
      */
-    public function process(array $payload): void
+    public function process(TransferMessagePayload $payload, bool $dryRun = false): void
     {
-        $transferId = $this->extractTransferId($payload);
-
-        if ($transferId === null) {
-            throw new InvalidArgumentException('missing transfer_id');
-        }
+        $transferId = (string) $payload->transferId;
 
         if ($this->isDuplicate($transferId)) {
             return;
         }
 
-        $payerId = (int) ($payload['payer_id'] ?? 0);
-        $payeeId = (int) ($payload['payee_id'] ?? 0);
-        $amount = (int) ($payload['amount'] ?? 0);
-        $numericTransferId = is_numeric($transferId) ? (int) $transferId : 0;
+        $payerId = $payload->payerId ?? 0;
+        $payeeId = $payload->payeeId ?? 0;
+        $amount = $payload->amount ?? '0';
+        $numericTransferId = $payload->transferId;
 
-        $transfer = Transfer::query()->find($numericTransferId);
-
-        if ($this->context->isEnabled()) {
-            $this->context->record('rabbitmq.dispatch', [
+        if ($dryRun) {
+            Log::info('[DRY-RUN] RabbitMQ dispatch skipped.', [
                 'payer_id' => $payerId,
                 'payee_id' => $payeeId,
                 'amount' => $amount,
                 'transfer_id' => $numericTransferId,
             ]);
-            $this->context->record('idempotency.skip', [
+            Log::info('[DRY-RUN] Idempotency write skipped.', [
                 'transfer_id' => $numericTransferId,
             ]);
 
             return;
         }
+
+        $transfer = Transfer::query()->find($numericTransferId);
 
         if (is_null($transfer) || $transfer->status !== TransferStatus::Completed) {
             Log::warning('Kafka transfer event ignored; transfer missing or not completed.', [
@@ -77,20 +68,6 @@ class KafkaTransferProcessor
         $this->dispatcher->dispatch(new SendNotificationJob($numericTransferId))->onConnection('rabbitmq');
 
         $this->markProcessed($transferId);
-    }
-
-    /**
-     * @param array<int|string, mixed> $payload
-     */
-    private function extractTransferId(array $payload): ?string
-    {
-        $transferId = $payload['transfer_id'] ?? null;
-
-        if (is_int($transferId) && $transferId > 0) {
-            return (string) $transferId;
-        }
-
-        return is_string($transferId) && $transferId !== '' ? $transferId : null;
     }
 
     private function isDuplicate(string $transferId): bool

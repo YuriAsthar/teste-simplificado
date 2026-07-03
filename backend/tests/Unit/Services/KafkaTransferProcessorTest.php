@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services;
 
+use App\DTOs\TransferMessagePayload;
 use App\Enums\TransferStatus;
 use App\Jobs\SendNotificationJob;
 use App\Models\Transfer;
 use App\Models\User;
-use App\Services\DryRun\DryRunContext;
-use App\Services\DryRun\DryRunRecorder;
 use App\Services\KafkaTransferProcessor;
 use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use RuntimeException;
 use stdClass;
@@ -20,13 +20,18 @@ use Tests\TestCase;
 
 final class KafkaTransferProcessorTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Cache::store('array')->flush();
+    }
+
     public function test_process_dispatches_notification_and_marks_processed(): void
     {
         $dispatcher = $this->mock(Dispatcher::class);
-        $cache = Cache::store();
-        $context = new DryRunContext(new DryRunRecorder());
-        $connection = $this->mock(stdClass::class);
+        $cache = Cache::store('array');
 
+        $connection = $this->mock(stdClass::class);
         $transfer = $this->createCompletedTransfer(123);
 
         $this->assertFalse($cache->has('kafka:transfer:123'));
@@ -42,13 +47,13 @@ final class KafkaTransferProcessorTest extends TestCase
             }))
             ->andReturn($connection);
 
-        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
-        $processor->process([
+        $processor = new KafkaTransferProcessor($dispatcher, $cache);
+        $processor->process($this->createPayload([
             'transfer_id' => '123',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
-        ]);
+        ]));
 
         $this->assertTrue($cache->has('kafka:transfer:123'));
         $this->assertNotNull($transfer->fresh());
@@ -57,20 +62,18 @@ final class KafkaTransferProcessorTest extends TestCase
     public function test_process_skips_duplicate_transfer_id(): void
     {
         $dispatcher = $this->mock(Dispatcher::class);
-        $cache = Cache::store();
-        $context = new DryRunContext(new DryRunRecorder());
+        $cache = Cache::store('array');
 
         $cache->put('kafka:transfer:123', true, 3600);
-
         $dispatcher->shouldNotReceive('dispatch');
 
-        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
-        $processor->process([
+        $processor = new KafkaTransferProcessor($dispatcher, $cache);
+        $processor->process($this->createPayload([
             'transfer_id' => '123',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
-        ]);
+        ]));
 
         $this->assertTrue($cache->has('kafka:transfer:123'));
     }
@@ -78,28 +81,25 @@ final class KafkaTransferProcessorTest extends TestCase
     public function test_process_throws_invalid_argument_for_missing_transfer_id(): void
     {
         $dispatcher = $this->mock(Dispatcher::class);
-        $cache = Cache::store();
-        $context = new DryRunContext(new DryRunRecorder());
+        $cache = Cache::store('array');
 
         $dispatcher->shouldNotReceive('dispatch');
-
-        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
+        $processor = new KafkaTransferProcessor($dispatcher, $cache);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('missing transfer_id');
 
-        $processor->process([
+        $processor->process($this->createPayload([
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
-        ]);
+        ]));
     }
 
     public function test_process_rethrows_unexpected_exception(): void
     {
         $dispatcher = $this->mock(Dispatcher::class);
-        $cache = Cache::store();
-        $context = new DryRunContext(new DryRunRecorder());
+        $cache = Cache::store('array');
 
         $this->createCompletedTransfer(123);
 
@@ -109,88 +109,76 @@ final class KafkaTransferProcessorTest extends TestCase
             ->once()
             ->andThrow(new RuntimeException('dispatch failed'));
 
-        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
+        $processor = new KafkaTransferProcessor($dispatcher, $cache);
 
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('dispatch failed');
 
-        $processor->process([
+        $processor->process($this->createPayload([
             'transfer_id' => '123',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
-        ]);
+        ]));
 
         $this->assertFalse($cache->has('kafka:transfer:123'));
     }
 
-    public function test_process_records_but_does_not_dispatch_in_dry_run(): void
+    public function test_process_returns_early_in_dry_run(): void
     {
         $dispatcher = $this->mock(Dispatcher::class);
-        $cache = Cache::store();
-        $context = new DryRunContext(new DryRunRecorder());
-        $context->enable();
+        $cache = Cache::store('array');
 
         $this->assertFalse($cache->has('kafka:transfer:123'));
 
         $dispatcher->shouldNotReceive('dispatch');
 
-        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
-        $processor->process([
+        $processor = new KafkaTransferProcessor($dispatcher, $cache);
+        $processor->process($this->createPayload([
             'transfer_id' => '123',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
-        ]);
+        ]), true);
 
-        $entries = $context->flush();
-
-        $this->assertCount(2, $entries);
-        $this->assertSame('rabbitmq.dispatch', $entries[0]['action']);
-        $this->assertSame('idempotency.skip', $entries[1]['action']);
-        $this->assertSame(123, $entries[1]['context']['transfer_id']);
+        $this->assertFalse($cache->has('kafka:transfer:123'));
     }
 
     public function test_process_skips_duplicate_even_in_dry_run(): void
     {
         $dispatcher = $this->mock(Dispatcher::class);
-        $cache = Cache::store();
-        $context = new DryRunContext(new DryRunRecorder());
-        $context->enable();
+        $cache = Cache::store('array');
 
         $cache->put('kafka:transfer:123', true, 3600);
 
         $dispatcher->shouldNotReceive('dispatch');
 
-        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
-        $processor->process([
+        $processor = new KafkaTransferProcessor($dispatcher, $cache);
+        $processor->process($this->createPayload([
             'transfer_id' => '123',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
-        ]);
+        ]), true);
 
-        $this->assertCount(0, $context->flush());
         $this->assertTrue($cache->has('kafka:transfer:123'));
     }
 
     public function test_process_marks_processed_when_transfer_is_missing(): void
     {
         $dispatcher = $this->mock(Dispatcher::class);
-        $cache = Cache::store();
-        $context = new DryRunContext(new DryRunRecorder());
+        $cache = Cache::store('array');
 
         $dispatcher->shouldNotReceive('dispatch');
-
         $this->assertFalse($cache->has('kafka:transfer:999'));
 
-        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
-        $processor->process([
+        $processor = new KafkaTransferProcessor($dispatcher, $cache);
+        $processor->process($this->createPayload([
             'transfer_id' => '999',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
-        ]);
+        ]));
 
         $this->assertTrue($cache->has('kafka:transfer:999'));
     }
@@ -198,22 +186,20 @@ final class KafkaTransferProcessorTest extends TestCase
     public function test_process_marks_processed_when_transfer_is_not_completed(): void
     {
         $dispatcher = $this->mock(Dispatcher::class);
-        $cache = Cache::store();
-        $context = new DryRunContext(new DryRunRecorder());
+        $cache = Cache::store('array');
 
         $transfer = Transfer::factory()->create(['status' => TransferStatus::Failed]);
-
         $dispatcher->shouldNotReceive('dispatch');
 
         $this->assertFalse($cache->has("kafka:transfer:{$transfer->id}"));
 
-        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
-        $processor->process([
+        $processor = new KafkaTransferProcessor($dispatcher, $cache);
+        $processor->process($this->createPayload([
             'transfer_id' => (string) $transfer->id,
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
-        ]);
+        ]));
 
         $this->assertTrue($cache->has("kafka:transfer:{$transfer->id}"));
     }
@@ -221,10 +207,9 @@ final class KafkaTransferProcessorTest extends TestCase
     public function test_process_uses_configured_ttl(): void
     {
         $dispatcher = $this->mock(Dispatcher::class);
-        $cache = Cache::store();
-        $context = new DryRunContext(new DryRunRecorder());
-        $connection = $this->mock(stdClass::class);
+        $cache = Cache::store('array');
 
+        $connection = $this->mock(stdClass::class);
         $transfer = $this->createCompletedTransfer(123);
 
         config(['kafka.idempotency_ttl' => 60]);
@@ -239,13 +224,13 @@ final class KafkaTransferProcessorTest extends TestCase
             ->once()
             ->andReturn($connection);
 
-        $processor = new KafkaTransferProcessor($dispatcher, $cache, $context);
-        $processor->process([
+        $processor = new KafkaTransferProcessor($dispatcher, $cache);
+        $processor->process($this->createPayload([
             'transfer_id' => '123',
             'payer_id' => 1,
             'payee_id' => 2,
             'amount' => 1000,
-        ]);
+        ]));
 
         $this->assertTrue($cache->has('kafka:transfer:123'));
         $this->assertNotNull($transfer->fresh());
@@ -263,5 +248,13 @@ final class KafkaTransferProcessorTest extends TestCase
             'amount' => 1000,
             'status' => TransferStatus::Completed,
         ]);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     */
+    private function createPayload(array $payload): TransferMessagePayload
+    {
+        return TransferMessagePayload::fromArray($payload);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\NewAccessToken;
 
 final readonly class LoginService
@@ -25,9 +26,16 @@ final readonly class LoginService
             return null;
         }
 
+        $accessToken = $user->createToken('api-token');
+
+        Log::info('Token issued.', [
+            'user_id' => $user->id,
+            'token_name' => 'api-token',
+        ]);
+
         return [
             'user' => $user,
-            'access_token' => $user->createToken('api-token'),
+            'access_token' => $accessToken,
         ];
     }
 }

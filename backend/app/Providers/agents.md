@@ -4,7 +4,7 @@
 Application service providers for dependency injection and event registration.
 
 ## Files
-- `AppServiceProvider.php` — General application bindings and bootstrapping.
+- `AppServiceProvider.php` — General application bindings. Binds `TransferPublisherInterface` to `KafkaTransferPublisher`.
 - `EventServiceProvider.php` — Maps `UserCreated` event to the `CreateUserWallet` listener.
 
 ## Conventions

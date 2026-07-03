@@ -14,7 +14,7 @@
 
 6. **Kafka consumer bridge deduplication**: Explicitly documented that the existing Redis `kafka:transfer:{transfer_id}` guard (with configurable TTL, default 3600s) is a **pre-dispatch** guard. `notified_at` in `SendNotificationJob` remains the final guard. The consumer uses real integer `transfer_id` from the Kafka payload and marks the message processed (to avoid endless redelivery) when the transfer is missing or not completed.
 
-7. **Idempotency keys migration completeness**: Consolidated into a single migration `2026_07_02_300000_align_idempotency_keys_to_plan.php` that adds ALL missing columns (`endpoint`, `request_hash`, `response_status`, `response_body`) and backfills `request_hash` from existing `fingerprint` values.
+7. **Idempotency keys migration completeness**: Consolidated into a single migration `2026_07_02_300000_align_idempotency_keys_to_plan.php` that adds all missing columns (`endpoint`, `request_hash`, `response_status`, `response_body`).
 
 ---
 
@@ -35,7 +35,7 @@ Replace the direct `SendNotificationJob` dispatch in `WalletTransferService` wit
 | Path | Current purpose | Identified problem | Proposed change |
 |------|-----------------|-------------------|-----------------|
 | `database/migrations/2026_07_02_200000_create_outbox_events_table.php` | (new) | Outbox table missing | Create table with `aggregate_type`, `aggregate_id`, `event_type`, `payload`, `status` (`Pending`/`Published`/`Failed`), `attempts`, `last_error_at`, and a **simple unique index** on `(aggregate_type, aggregate_id, event_type)` via Blueprint |
-| `database/migrations/2026_07_02_300000_align_idempotency_keys_to_plan.php` | (new) | Idempotency keys missing `endpoint`, `request_hash`, `response_status`, `response_body` | One migration that adds all four columns and backfills `request_hash` from existing `fingerprint` values |
+| `database/migrations/2026_07_02_300000_align_idempotency_keys_to_plan.php` | (new) | Idempotency keys missing `endpoint`, `request_hash`, `response_status`, `response_body` | One migration that adds all four columns |
 
 #### Reference code — Outbox migration
 
@@ -97,22 +97,11 @@ return new class extends Migration
             $table->text('response_body')->nullable();
         });
 
-        // Backfill request_hash from existing fingerprint values
-        DB::table('idempotency_keys')
-            ->whereNotNull('fingerprint')
-            ->update(['request_hash' => DB::raw('fingerprint')]);
-    }
-
-    public function down(): void
-    {
-        Schema::table('idempotency_keys', function (Blueprint $table): void {
-            $table->dropColumn(['endpoint', 'request_hash', 'response_status', 'response_body']);
-        });
     }
 };
 ```
 
-**Note:** The migration leaves the legacy `fingerprint` column in place for rollback safety. A future migration can drop `fingerprint` once the new code has been verified in production. `IdempotencyKey` exposes a `fingerprint` accessor that returns `request_hash` so existing code and tests continue to work during the transition.
+**Note:** The canonical idempotency identifier is `request_hash`. Legacy references were removed and the table schema is aligned to the new columns only.
 
 ---
 
@@ -431,9 +420,8 @@ public function __invoke(CreateTransferRequest $request): JsonResponse
 | `tests/Feature/Kafka/KafkaTransferIntegrationTest.php` | Update expected event name; update synthetic `txn_*` IDs to real `transfer.id` values |
 | `tests/Unit/Services/KafkaTransferProcessorTest.php` | Add test for Redis pre-dispatch guard TTL; verify real `transfer_id`; verify no dispatch when transfer missing or not completed |
 | `tests/Feature/Console/ConsumeTransfersCommandTest.php` | Update expected event name in dry-run assertions |
-| `tests/Feature/Console/KafkaProduceTransferCommandTest.php` | Use real transfer IDs; update dry-run assertions |
 | `tests/Feature/Api/V1/TransferControllerTest.php` | Add tests for 422 (authorizer rejection), 503 (transient authorizer error), 403 (identity mismatch), cached idempotency replay, outbox row created, no direct `SendNotificationJob` dispatch |
-| `tests/Feature/Database/Migrations/IdempotencyKeysMigrationBackfillTest.php` | Add assertions that `request_hash` is backfilled from `fingerprint` and that `endpoint`, `response_status`, `response_body` columns exist |
+| `tests/Feature/Database/Migrations/IdempotencyKeysMigrationBackfillTest.php` | Add assertions that `request_hash` is backfilled for legacy rows and that `endpoint`, `response_status`, `response_body` columns exist |
 | `tests/Unit/Jobs/SendNotificationJobTest.php` | No changes needed; `notified_at` guard remains the final idempotency mechanism |
 | `tests/Unit/Models/OutboxEventTest.php` | (new) Test `pending()` scope, `markFailed()` sets `status=Failed`, `markPublished()`, unique index enforcement |
 | `tests/Feature/Console/PublishOutboxEventsCommandTest.php` | (new) Test command publishes pending events, skips already-published, marks failures correctly, respects retry interval |

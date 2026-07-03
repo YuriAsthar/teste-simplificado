@@ -10,7 +10,6 @@ use InvalidArgumentException;
 
 /**
  * @implements CastsAttributes<int, int>
- * @SuppressWarnings("PHPMD.UnusedFormalParameter")
  */
 final class MoneyCast implements CastsAttributes
 {

@@ -20,9 +20,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        // WARNING: down() re-adds the FK and positive-amount constraints. It will fail if any failed
-        // transfer rows reference non-existent users or have amount = 0. In production this migration
-        // should be treated as forward-only; roll back only after cleaning up orphan/invalid rows.
         DB::statement('ALTER TABLE transfers DROP CONSTRAINT IF EXISTS chk_transfers_amount_non_negative');
         DB::statement('ALTER TABLE transfers ADD CONSTRAINT chk_transfers_amount_positive CHECK (amount > 0)');
 

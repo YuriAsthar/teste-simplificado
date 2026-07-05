@@ -12,7 +12,7 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 | `./docker/init-multi-db.sql` | Database initialization script | SQL |
 | `./Dockerfile` | PHP 8.4-FPM container definition with PHP-FPM healthcheck support; installs `pdo_pgsql`, `pgsql`, `zip`, and `sockets` PHP extensions | Docker |
 | `./docker-compose.yml` | Multi-service orchestration with service_healthy dependency | Docker Compose |
-| `./.env.example` | Compose host port template (NGINX_HOST_PORT) and Laravel environment template; `LOG_CHANNEL=stdout` so container logs go to Docker stdout. Kafka defaults live in `config/kafka.php`. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` was removed because `ConsumeTransfersCommand` no longer uses a sleep-based daemon loop. | Config |
+| `./.env.example` | Compose host port template and Laravel environment template; `LOG_CHANNEL=stdout` so container logs go to Docker stdout. Kafka defaults live in `config/kafka.php`. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` was removed because `ConsumeTransfersCommand` no longer uses a sleep-based daemon loop. | Config |
 | `./.env.testing` | Testing environment config; `LOG_CHANNEL=stdout`. Overrides `KAFKA_BROKERS` for host-side test runners. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` and `KAFKA_CONSUMER_GROUP_ID_RETRY` were removed. | Config |
 | `./ecs.php` | EasyCodingStandard configuration | Config |
 | `./phpstan.neon` | PHPStan analysis configuration | Config |
@@ -23,7 +23,6 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 
 ## Services
 - **app**: PHP 8.4-FPM with Laravel 13
-- **web**: Nginx reverse proxy (configurable host port via `NGINX_HOST_PORT`, default 8080)
 - **db**: PostgreSQL 16 (port 6432)
 - **redis**: Redis 7 (port 7379)
 - **rabbitmq**: RabbitMQ 3 Management (ports 6672, 16672)
@@ -59,7 +58,7 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 - Prefer `protected $fillable` and `protected $hidden` over Laravel 13 `#[Fillable]` / `#[Hidden]` attributes for consistency across the codebase.
 
 ## Setup
-1. Copy `.env.example` to `.env` to set `NGINX_HOST_PORT` (default 8080) and configure the Laravel sandbox environment.
+1. Copy `.env.example` to `.env` and configure the Laravel sandbox environment.
 2. Generate an `APP_KEY`: `docker compose run --rm app php artisan key:generate`.
 3. Start stack with `docker compose up -d --build`.
 4. Fix volume ownership: `docker compose run --rm --user root app chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache`.

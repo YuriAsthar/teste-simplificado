@@ -5,7 +5,7 @@ This document describes all API endpoints, authentication flow, request/response
 ## Base URL
 
 ```
-http://localhost:8080
+http://localhost:8000
 ```
 
 All API endpoints are prefixed with `/api/v1`.
@@ -328,7 +328,7 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 ### Register User
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/register \
+curl -X POST http://localhost:8000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "John Doe",
@@ -344,7 +344,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
 ### Login
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
+curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "john@example.com",
@@ -355,7 +355,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 ### Transfer (with Authentication)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/transfer \
+curl -X POST http://localhost:8000/api/v1/transfer \
   -H "Authorization: Bearer 4|abcdefghijklmnopqrstuvwxyz123456" \
   -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000" \
   -H "Content-Type: application/json" \
@@ -370,7 +370,7 @@ curl -X POST http://localhost:8080/api/v1/transfer \
 ### Transfer (Auto-populated Payer)
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/transfer \
+curl -X POST http://localhost:8000/api/v1/transfer \
   -H "Authorization: Bearer 4|abcdefghijklmnopqrstuvwxyz123456" \
   -H "Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000" \
   -H "Content-Type: application/json" \
@@ -384,7 +384,7 @@ curl -X POST http://localhost:8080/api/v1/transfer \
 ### Logout
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/auth/logout \
+curl -X POST http://localhost:8000/api/v1/auth/logout \
   -H "Authorization: Bearer 4|abcdefghijklmnopqrstuvwxyz123456"
 ```
 
@@ -476,7 +476,7 @@ The transfer enforces these business rules:
 
 ```bash
 # Register
-curl -X POST http://localhost:8080/api/v1/auth/register \
+curl -X POST http://localhost:8000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Test User",
@@ -489,7 +489,7 @@ curl -X POST http://localhost:8080/api/v1/auth/register \
   }'
 
 # Login
-TOKEN=$(curl -X POST http://localhost:8080/api/v1/auth/login \
+TOKEN=$(curl -X POST http://localhost:8000/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
@@ -497,7 +497,7 @@ TOKEN=$(curl -X POST http://localhost:8080/api/v1/auth/login \
   }' | jq -r '.data.access_token')
 
 # Transfer
-curl -X POST http://localhost:8080/api/v1/transfer \
+curl -X POST http://localhost:8000/api/v1/transfer \
   -H "Authorization: Bearer $TOKEN" \
   -H "Idempotency-Key: test-uuid-$(uuidgen)" \
   -H "Content-Type: application/json" \
@@ -512,7 +512,7 @@ curl -X POST http://localhost:8080/api/v1/transfer \
 
 ```bash
 # Run a test request
-docker compose run --rm app curl http://localhost:8080/
+docker compose run --rm app curl http://localhost:8000/
 
 # Start the stack
 docker compose up -d

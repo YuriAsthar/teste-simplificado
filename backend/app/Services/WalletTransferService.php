@@ -19,12 +19,10 @@ use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 
-/**
- * @SuppressWarnings("PHPMD.StaticAccess")
- */
 final readonly class WalletTransferService
 {
     public function __construct(
@@ -45,8 +43,21 @@ final readonly class WalletTransferService
         string $idempotencyKey,
     ): Transfer {
         if ($idempotencyKey === '') {
+            Log::info('Executing transfer without idempotency key.', [
+                'payer_id' => $payerId,
+                'payee_id' => $payeeId,
+                'amount' => $amount,
+            ]);
+
             return $this->executeWithoutKey($payerId, $payeeId, $amount);
         }
+
+        Log::info('Executing transfer with idempotency key.', [
+            'payer_id' => $payerId,
+            'payee_id' => $payeeId,
+            'amount' => $amount,
+            'idempotency_key' => $idempotencyKey,
+        ]);
 
         $requestHash = $this->idempotencyService->buildRequestHash($payerId, $payeeId, $amount);
 
@@ -160,6 +171,10 @@ final readonly class WalletTransferService
         $payee = $this->findActiveUser($payeeId);
 
         if (is_null($payer)) {
+            Log::warning('Transfer validation failed: payer not found.', [
+                'payer_id' => $payerId,
+            ]);
+
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
@@ -171,6 +186,10 @@ final readonly class WalletTransferService
         }
 
         if (is_null($payee)) {
+            Log::warning('Transfer validation failed: payee not found.', [
+                'payee_id' => $payeeId,
+            ]);
+
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
@@ -185,6 +204,10 @@ final readonly class WalletTransferService
         $userType = $payer->type;
 
         if ($userType->isMerchant()) {
+            Log::warning('Transfer validation failed: payer is merchant.', [
+                'payer_id' => $payerId,
+            ]);
+
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
@@ -199,6 +222,10 @@ final readonly class WalletTransferService
         $payeeWallet = $payee->wallet;
 
         if (is_null($payerWallet) || $payerWallet->trashed()) {
+            Log::warning('Transfer validation failed: payer wallet inactive.', [
+                'payer_id' => $payerId,
+            ]);
+
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
@@ -210,6 +237,10 @@ final readonly class WalletTransferService
         }
 
         if (is_null($payeeWallet) || $payeeWallet->trashed()) {
+            Log::warning('Transfer validation failed: payee wallet inactive.', [
+                'payee_id' => $payeeId,
+            ]);
+
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
@@ -221,6 +252,11 @@ final readonly class WalletTransferService
         }
 
         if ($payerWallet->currency->value !== $payeeWallet->currency->value) {
+            Log::warning('Transfer validation failed: currency mismatch.', [
+                'payer_id' => $payerId,
+                'payee_id' => $payeeId,
+            ]);
+
             return $this->createFailedTransfer(
                 $payerId,
                 $payeeId,
@@ -234,12 +270,28 @@ final readonly class WalletTransferService
         $authorizerResult = $this->authorizer->authorize();
 
         if ($authorizerResult === AuthorizerResult::Rejected) {
+            Log::warning('Transfer validation failed: authorizer rejected.', [
+                'payer_id' => $payerId,
+                'payee_id' => $payeeId,
+            ]);
+
             throw new AuthorizerRejectedException();
         }
 
         if ($authorizerResult === AuthorizerResult::Transient) {
+            Log::warning('Transfer validation failed: authorizer transient error.', [
+                'payer_id' => $payerId,
+                'payee_id' => $payeeId,
+            ]);
+
             throw new TransientAuthorizerException();
         }
+
+        Log::info('Transfer validations passed; starting transaction.', [
+            'payer_id' => $payerId,
+            'payee_id' => $payeeId,
+            'amount' => $amount,
+        ]);
 
         return $this->runInTransaction($payer, $payee, $payerWallet, $payeeWallet, $amount, $idempotencyKey, $requestHash);
     }
@@ -290,6 +342,13 @@ final readonly class WalletTransferService
             $payerBalance = (int) $lockedPayerWallet->getRawOriginal('balance');
 
             if ($payerBalance < $amount) {
+                Log::warning('Transfer failed: insufficient funds.', [
+                    'payer_id' => $payer->id,
+                    'payee_id' => $payee->id,
+                    'amount' => $amount,
+                    'balance' => $payerBalance,
+                ]);
+
                 return $this->createFailedTransfer(
                     $payer->id,
                     $payee->id,
@@ -306,6 +365,12 @@ final readonly class WalletTransferService
             $payeeBalance = (int) $lockedPayeeWallet->getRawOriginal('balance');
             $lockedPayeeWallet->balance = $payeeBalance + $amount;
             $lockedPayeeWallet->save();
+
+            Log::info('Transfer balances updated.', [
+                'payer_id' => $payer->id,
+                'payee_id' => $payee->id,
+                'amount' => $amount,
+            ]);
 
             $transfer = Transfer::create([
                 'payer_id' => $payer->id,

@@ -17,6 +17,11 @@ final readonly class NotificationService
         $url = (string) config('services.notifier.url', 'https://util.devi.tools/api/v1/notify');
         $timeout = (int) config('services.notifier.timeout', 10);
 
+        Log::info('Dispatching notification.', [
+            'transfer_id' => $transfer->id,
+            'payee_id' => $transfer->payee_id,
+        ]);
+
         $payload = [
             'user' => $transfer->payee->email ?? (string) $transfer->payee_id,
             'message' => "Transfer #{$transfer->id} received.",
@@ -27,6 +32,11 @@ final readonly class NotificationService
         try {
             $response = Http::timeout($timeout)->post($url, $payload);
         } catch (ConnectionException $exception) {
+            Log::warning('Notification service unreachable.', [
+                'transfer_id' => $transfer->id,
+                'exception' => $exception->getMessage(),
+            ]);
+
             throw new NotificationException(
                 'Notification service unreachable: ' . $exception->getMessage(),
                 0,
@@ -35,6 +45,11 @@ final readonly class NotificationService
         }
 
         if (!$response->successful()) {
+            Log::warning('Notification service returned non-success status.', [
+                'transfer_id' => $transfer->id,
+                'http_status' => $response->status(),
+            ]);
+
             throw new NotificationException(
                 'Notification service returned non-success: HTTP ' . $response->status(),
                 $response->status(),
@@ -42,12 +57,21 @@ final readonly class NotificationService
         }
 
         if ($response->body() !== '' && $response->json('status') !== 'success') {
+            Log::warning('Notification service returned non-success body status.', [
+                'transfer_id' => $transfer->id,
+                'http_status' => $response->status(),
+                'status' => $response->json('status'),
+            ]);
+
             throw new NotificationException(
                 'Notification service returned non-success status: ' . $response->json('status'),
                 $response->status(),
             );
         }
 
-        Log::info('Notification service returned success: HTTP ' . $response->status(), $payload);
+        Log::info('Notification dispatched successfully.', [
+            'transfer_id' => $transfer->id,
+            'payee_id' => $transfer->payee_id,
+        ]);
     }
 }

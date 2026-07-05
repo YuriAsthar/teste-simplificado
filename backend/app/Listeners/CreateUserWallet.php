@@ -6,7 +6,6 @@ namespace App\Listeners;
 
 use App\Enums\CurrencyType;
 use App\Events\UserCreated;
-use App\Models\Wallet;
 
 final readonly class CreateUserWallet
 {

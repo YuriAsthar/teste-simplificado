@@ -8,22 +8,20 @@ use App\Enums\FailureReason;
 use App\Enums\TransferStatus;
 use App\Exceptions\AuthorizerRejectedException;
 use App\Exceptions\TransientAuthorizerException;
-use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateTransferRequest;
+use App\Http\Resources\TransferResponseResource;
 use App\Models\Transfer;
 use App\Models\User;
 use App\Services\IdempotencyKeyService;
 use App\Services\WalletTransferService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
-/**
- * @SuppressWarnings("PHPMD.StaticAccess")
- */
-final class TransferController extends Controller
+final readonly class TransferController
 {
     public function __construct(
-        private readonly WalletTransferService $service,
-        private readonly IdempotencyKeyService $idempotencyService,
+        private WalletTransferService $service,
+        private IdempotencyKeyService $idempotencyService,
     ) {
     }
 
@@ -42,6 +40,11 @@ final class TransferController extends Controller
         $requestHash = $this->idempotencyService->buildRequestHashFromValidated($request->validated());
         $endpoint = $request->route()?->uri() ?? '/api/v1/transfer';
 
+        Log::info('Checking idempotency key.', [
+            'payer_id' => $payerId,
+            'idempotency_key' => $idempotencyKey,
+        ]);
+
         $cachedResponse = $this->idempotencyService->tryResolveCachedResponse(
             $idempotencyKey,
             $endpoint,
@@ -49,6 +52,11 @@ final class TransferController extends Controller
         );
 
         if (!is_null($cachedResponse)) {
+            Log::info('Returning cached idempotency response.', [
+                'payer_id' => $payerId,
+                'idempotency_key' => $idempotencyKey,
+            ]);
+
             return response()->json($cachedResponse['body'], $cachedResponse['status']);
         }
 
@@ -59,6 +67,13 @@ final class TransferController extends Controller
                 $request->amount(),
                 $idempotencyKey,
             );
+
+            Log::info('Transfer created.', [
+                'transfer_id' => $transfer->id,
+                'payer_id' => $payerId,
+                'payee_id' => (int) $request->validated('payee'),
+                'status' => $transfer->status->value,
+            ]);
         } catch (AuthorizerRejectedException) {
             return response()->json([
                 'code' => 'authorizer_rejected',
@@ -73,11 +88,7 @@ final class TransferController extends Controller
 
         $statusCode = $this->resolveStatusCode($transfer);
         $responseBody = [
-            'data' => [
-                'id' => $transfer->id,
-                'status' => $transfer->status->value,
-                'failure_reason' => $transfer->failure_reason?->value,
-            ],
+            'data' => new TransferResponseResource($transfer),
         ];
 
         if (!$transfer->status->isFailed()) {

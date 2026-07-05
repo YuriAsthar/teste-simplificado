@@ -1,8 +1,8 @@
 <?php
 
 use App\Exceptions\AuthorizerRejectedException;
-use App\Exceptions\IdempotencyKeyFingerprintMismatchException;
 use App\Exceptions\IdempotencyKeyInProgressException;
+use App\Exceptions\IdempotencyPayloadMismatchException;
 use App\Exceptions\TransientAuthorizerException;
 use App\Support\DatabaseErrorResponse;
 use Illuminate\Database\QueryException;
@@ -60,7 +60,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ], $exception->getStatusCode());
         });
 
-        $exceptions->renderable(function (IdempotencyKeyFingerprintMismatchException $exception, Request $request): ?JsonResponse {
+        $exceptions->renderable(function (IdempotencyPayloadMismatchException $exception, Request $request): ?JsonResponse {
             if (!$request->is('api/*')) {
                 return null;
             }

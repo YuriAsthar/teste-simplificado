@@ -12,8 +12,8 @@ use App\Enums\OutboxStatus;
 use App\Enums\TransferStatus;
 use App\Enums\UserType;
 use App\Exceptions\AuthorizerRejectedException;
-use App\Exceptions\IdempotencyKeyFingerprintMismatchException;
 use App\Exceptions\IdempotencyKeyInProgressException;
+use App\Exceptions\IdempotencyPayloadMismatchException;
 use App\Exceptions\TransientAuthorizerException;
 use App\Models\IdempotencyKey;
 use App\Models\OutboxEvent;
@@ -230,7 +230,7 @@ final class WalletTransferServiceTest extends TestCase
 
         Queue::assertNothingPushed();
 
-        $this->expectException(IdempotencyKeyFingerprintMismatchException::class);
+        $this->expectException(IdempotencyPayloadMismatchException::class);
 
         $service->execute($payer->id, $payee->id, 2000, 'mismatch-key');
     }
@@ -245,7 +245,6 @@ final class WalletTransferServiceTest extends TestCase
         IdempotencyKey::factory()->create([
             'key' => 'processing-key',
             'status' => IdempotencyKeyStatus::Processing,
-            'fingerprint' => hash('sha256', implode(':', [$payer->id, $payee->id, 1000])),
             'request_hash' => hash('sha256', implode(':', [$payer->id, $payee->id, 1000])),
         ]);
 
@@ -355,7 +354,7 @@ final class WalletTransferServiceTest extends TestCase
         IdempotencyKey::factory()->create([
             'key' => 'stale-key',
             'status' => IdempotencyKeyStatus::Processing,
-            'fingerprint' => $this->idempotencyService->buildRequestHash($payer->id, $payee->id, 1000),
+            'request_hash' => $this->idempotencyService->buildRequestHash($payer->id, $payee->id, 1000),
             'updated_at' => now()->subSeconds(600),
         ]);
 
@@ -396,7 +395,6 @@ final class WalletTransferServiceTest extends TestCase
         IdempotencyKey::factory()->create([
             'key' => 'replay-key',
             'status' => IdempotencyKeyStatus::Completed,
-            'fingerprint' => hash('sha256', implode(':', [$payer->id, $payee->id, 1000])),
             'request_hash' => hash('sha256', implode(':', [$payer->id, $payee->id, 1000])),
             'transfer_id' => $transfer->id,
         ]);

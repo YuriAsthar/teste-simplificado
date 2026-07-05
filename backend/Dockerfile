@@ -35,10 +35,13 @@ RUN groupmod -g ${GID} www-data && usermod -u ${UID} -g ${GID} www-data \
     && mkdir -p storage bootstrap/cache \
     && chown -R www-data:www-data /var/www/html
 
+# Ensure www-data can write PsySH config to $HOME/.config (home is /var/www)
+RUN mkdir -p /var/www/.config && chown -R www-data:www-data /var/www/.config
+
 # Switch to non-root user for FPM
 USER www-data
 
-# Expose PHP-FPM port
-EXPOSE 9000
+# Expose artisan serve port
+EXPOSE 8000
 
 CMD ["php-fpm"]

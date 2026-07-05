@@ -7,10 +7,7 @@ namespace App\Exceptions;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
-/**
- * @SuppressWarnings("PHPMD.LongClassName")
- */
-final class IdempotencyKeyFingerprintMismatchException extends RuntimeException implements HttpExceptionInterface
+final class IdempotencyPayloadMismatchException extends RuntimeException implements HttpExceptionInterface
 {
     public function __construct(
         string $message = 'Idempotency key was previously used with a different payload.',

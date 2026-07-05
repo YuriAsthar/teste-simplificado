@@ -12,9 +12,8 @@ return new class extends Migration
     {
         Schema::table('idempotency_keys', function (Blueprint $table): void {
             $table->string('status')->default(IdempotencyKeyStatus::Processing->value);
-            $table->string('fingerprint')->nullable();
+            $table->string('request_hash')->nullable();
             $table->index('status');
-            $table->index('fingerprint');
         });
 
         $rows = DB::table('idempotency_keys')
@@ -33,7 +32,7 @@ return new class extends Migration
                 ->where('id', $row->idempotency_key_id)
                 ->update([
                     'status' => IdempotencyKeyStatus::Completed->value,
-                    'fingerprint' => hash('sha256', implode(':', [$row->payer_id, $row->payee_id, $row->amount])),
+                    'request_hash' => hash('sha256', implode(':', [$row->payer_id, $row->payee_id, $row->amount])),
                 ]);
         }
 
@@ -41,16 +40,7 @@ return new class extends Migration
             ->whereNull('transfer_id')
             ->update([
                 'status' => IdempotencyKeyStatus::Completed->value,
-                'fingerprint' => null,
+                'request_hash' => null,
             ]);
-    }
-
-    public function down(): void
-    {
-        Schema::table('idempotency_keys', function (Blueprint $table): void {
-            $table->dropIndex(['fingerprint']);
-            $table->dropIndex(['status']);
-            $table->dropColumn(['status', 'fingerprint']);
-        });
     }
 };

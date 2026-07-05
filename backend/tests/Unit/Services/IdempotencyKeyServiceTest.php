@@ -35,16 +35,6 @@ final class IdempotencyKeyServiceTest extends TestCase
         );
     }
 
-    public function test_fingerprint_alias_matches_request_hash(): void
-    {
-        $service = new IdempotencyKeyService();
-
-        $this->assertSame(
-            $service->buildRequestHash(1, 2, 100),
-            $service->buildFingerprint(1, 2, 100),
-        );
-    }
-
     public function test_try_resolve_cached_response_returns_null_when_no_match(): void
     {
         $service = new IdempotencyKeyService();

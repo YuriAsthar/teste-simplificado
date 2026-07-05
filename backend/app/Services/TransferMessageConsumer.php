@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\TransferMessagePayload;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class TransferMessageConsumer
@@ -17,28 +19,67 @@ class TransferMessageConsumer
     /**
      * @param array<string, mixed> $message
      */
-    public function consume(array $message): void
+    public function consume(array $message, bool $dryRun = false): void
     {
         $payload = $message['payload'] ?? null;
         $transferId = $this->extractTransferId($payload);
 
-        if ($transferId === null) {
+        Log::info('Processing transfer message.', [
+            'transfer_id' => $transferId,
+        ]);
+
+        if (is_null($transferId)) {
+            Log::warning('Transfer message rejected: missing transfer_id.', [
+                'payload' => is_array($payload) ? array_diff_key($payload, ['transfer_id' => true]) : null,
+            ]);
+
+            if ($dryRun) {
+                Log::info('[DRY-RUN] DLQ publish skipped for missing transfer_id.');
+
+                return;
+            }
+
             $this->retryPolicy->publishDlq($message, 'missing transfer_id');
 
             return;
         }
 
+        $payloadDto = TransferMessagePayload::fromArray($payload);
+
         try {
-            $this->processor->process($payload);
+            $this->processor->process($payloadDto, $dryRun);
+            Log::info('Transfer processed successfully.', [
+                'transfer_id' => $transferId,
+            ]);
         } catch (Throwable $exception) {
             $attempt = $this->extractAttempt($message);
 
-            if ($this->retryPolicy->shouldRetry($attempt)) {
-                $this->retryPolicy->publishRetry($transferId, $payload, $attempt, $exception->getMessage());
+            if ($dryRun) {
+                Log::warning('[DRY-RUN] Transfer processing failed; retry/DLQ publish skipped.', [
+                    'transfer_id' => $transferId,
+                    'attempt' => $attempt,
+                    'exception' => $exception->getMessage(),
+                ]);
 
                 return;
             }
 
+            if ($this->retryPolicy->shouldRetry($attempt)) {
+                Log::warning('Transfer processing failed; retry will be published.', [
+                    'transfer_id' => $transferId,
+                    'attempt' => $attempt,
+                    'exception' => $exception->getMessage(),
+                ]);
+                $this->retryPolicy->publishRetry($payloadDto, $attempt, $exception->getMessage());
+
+                return;
+            }
+
+            Log::error('Transfer processing failed after max retries; sending to DLQ.', [
+                'transfer_id' => $transferId,
+                'attempt' => $attempt,
+                'exception' => $exception->getMessage(),
+            ]);
             $this->retryPolicy->publishDlq($message, $exception->getMessage());
         }
     }

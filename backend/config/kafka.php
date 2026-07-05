@@ -11,7 +11,6 @@ return [
         'password' => env('KAFKA_PASSWORD'),
     ],
     'consumer_group_id' => env('KAFKA_CONSUMER_GROUP_ID', 'wallet-transfer-consumers'),
-    'consumer_group_id_retry' => env('KAFKA_CONSUMER_GROUP_ID_RETRY', env('KAFKA_CONSUMER_GROUP_ID', 'wallet-transfer-consumers') . '-retry'),
     'consumer_timeout_ms' => (int) env('KAFKA_CONSUMER_DEFAULT_TIMEOUT', 2000),
     'offset_reset' => env('KAFKA_OFFSET_RESET', 'earliest'),
     'auto_commit' => (bool) env('KAFKA_AUTO_COMMIT', true),
@@ -31,4 +30,10 @@ return [
     'retry_attempts' => (int) env('KAFKA_RETRY_ATTEMPTS', 3),
     'retry_backoff_seconds' => (int) env('KAFKA_RETRY_BACKOFF_SECONDS', 60),
     'commit_after_handle' => (bool) env('KAFKA_COMMIT_AFTER_HANDLE', true),
+    'topics' => [
+        'wallet.transfer.completed' => [
+            'limit_messages' => (int) env('KAFKA_TOPIC_COMPLETED_LIMIT_MESSAGES', 100),
+            'commit_after_handle' => (bool) env('KAFKA_TOPIC_COMPLETED_COMMIT_AFTER_HANDLE', true),
+        ],
+    ],
 ];

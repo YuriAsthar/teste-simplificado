@@ -85,7 +85,7 @@ abstract class KafkaTestCase extends TestCase
             /** @var RdKafka\Message|null $message */
             $message = $consumer->consume($timeoutMs - $elapsedMs);
 
-            if ($message === null) {
+            if (is_null($message)) {
                 continue;
             }
 
@@ -123,7 +123,6 @@ abstract class KafkaTestCase extends TestCase
                     return;
                 }
             } catch (\Exception) {
-                // Broker may not be ready yet; retry
             }
 
             usleep(100_000);
@@ -159,7 +158,7 @@ abstract class KafkaTestCase extends TestCase
             /** @var RdKafka\Message|null $message */
             $message = $consumer->consume($timeoutMs - $elapsedMs);
 
-            if ($message === null) {
+            if (is_null($message)) {
                 return;
             }
 
@@ -190,7 +189,6 @@ abstract class KafkaTestCase extends TestCase
             return;
         }
 
-        // Trigger auto-topic creation by producing a single metadata request
         $producer = new RdKafka\Producer($this->baseConfig());
         $producer->poll(0);
 
@@ -211,7 +209,6 @@ abstract class KafkaTestCase extends TestCase
                     return;
                 }
             } catch (\Exception) {
-                // Topic may not exist yet; retry
             }
 
             usleep(100_000);
@@ -236,7 +233,6 @@ abstract class KafkaTestCase extends TestCase
 
                 return;
             } catch (\Exception) {
-                // Broker may not be ready yet; retry
             }
 
             usleep(100_000);

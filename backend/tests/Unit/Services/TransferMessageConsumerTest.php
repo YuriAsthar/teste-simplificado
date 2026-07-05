@@ -5,18 +5,22 @@ declare(strict_types=1);
 namespace Tests\Unit\Services;
 
 use App\Contracts\TransferPublisherInterface;
-use App\Services\DryRun\DryRunContext;
-use App\Services\DryRun\DryRunRecorder;
-use App\Services\Kafka\DryRunTransferPublisher;
+use App\DTOs\TransferMessagePayload;
 use App\Services\KafkaTransferProcessor;
 use App\Services\TransferMessageConsumer;
 use App\Services\TransferRetryPolicy;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Tests\TestCase;
 
 final class TransferMessageConsumerTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+    }
+
     public function test_consumes_valid_transfer_and_dispatches_notification(): void
     {
         $processor = $this->mock(KafkaTransferProcessor::class);
@@ -32,7 +36,11 @@ final class TransferMessageConsumerTest extends TestCase
 
         $processor->shouldReceive('process')
             ->once()
-            ->with($payload);
+            ->with($this->callback(static function (TransferMessagePayload $dto): bool {
+                return $dto->transferId === 123
+                    && $dto->payerId === 1
+                    && $dto->payeeId === 2;
+            }), false);
 
         $consumer = new TransferMessageConsumer($processor, $retryPolicy);
         $consumer->consume([
@@ -91,7 +99,11 @@ final class TransferMessageConsumerTest extends TestCase
 
         $processor->shouldReceive('process')
             ->once()
-            ->with($payload)
+            ->with($this->callback(static function (TransferMessagePayload $dto): bool {
+                return $dto->transferId === 123
+                    && $dto->payerId === 1
+                    && $dto->payeeId === 2;
+            }), false)
             ->andThrow($exception);
 
         $consumer = new TransferMessageConsumer($processor, $retryPolicy);
@@ -108,7 +120,7 @@ final class TransferMessageConsumerTest extends TestCase
         $this->assertSame('123', $publisher->published[0]['key']);
         $this->assertSame(1, $publisher->published[0]['envelope']['meta']['retry']['attempt']);
         $this->assertSame('processor failed', $publisher->published[0]['envelope']['meta']['reason']);
-        $this->assertSame('123', $publisher->published[0]['envelope']['payload']['transfer_id']);
+        $this->assertSame(123, $publisher->published[0]['envelope']['payload']['transfer_id']);
     }
 
     public function test_publishes_retry_with_existing_attempt_count(): void
@@ -128,7 +140,11 @@ final class TransferMessageConsumerTest extends TestCase
 
         $processor->shouldReceive('process')
             ->once()
-            ->with($payload)
+            ->with($this->callback(static function (TransferMessagePayload $dto): bool {
+                return $dto->transferId === 123
+                    && $dto->payerId === 1
+                    && $dto->payeeId === 2;
+            }), false)
             ->andThrow($exception);
 
         $consumer = new TransferMessageConsumer($processor, $retryPolicy);
@@ -144,7 +160,7 @@ final class TransferMessageConsumerTest extends TestCase
         $this->assertCount(1, $publisher->published);
         $this->assertSame('wallet.transfer.retry', $publisher->published[0]['topic']);
         $this->assertSame(3, $publisher->published[0]['envelope']['meta']['retry']['attempt']);
-        $this->assertSame('123', $publisher->published[0]['envelope']['payload']['transfer_id']);
+        $this->assertSame(123, $publisher->published[0]['envelope']['payload']['transfer_id']);
     }
 
     public function test_sends_to_dlq_when_retry_attempts_exhausted(): void
@@ -173,7 +189,11 @@ final class TransferMessageConsumerTest extends TestCase
 
         $processor->shouldReceive('process')
             ->once()
-            ->with($payload)
+            ->with($this->callback(static function (TransferMessagePayload $dto): bool {
+                return $dto->transferId === 123
+                    && $dto->payerId === 1
+                    && $dto->payeeId === 2;
+            }), false)
             ->andThrow($exception);
 
         $consumer = new TransferMessageConsumer($processor, $retryPolicy);
@@ -214,17 +234,35 @@ final class TransferMessageConsumerTest extends TestCase
         $this->assertSame('missing transfer_id', $publisher->published[0]['envelope']['meta']['reason']);
     }
 
-    public function test_records_retry_publish_in_dry_run(): void
+    public function test_skips_dlq_publish_in_dry_run(): void
     {
-        $context = new DryRunContext(new DryRunRecorder());
-        $context->enable();
-
-        $publisher = $this->createMock(TransferPublisherInterface::class);
-        $publisher->expects($this->never())->method('publish');
-
-        $retryPolicy = new TransferRetryPolicy(new DryRunTransferPublisher($context, $publisher));
-
         $processor = $this->mock(KafkaTransferProcessor::class);
+        $publisher = $this->createFakePublisher();
+        $retryPolicy = new TransferRetryPolicy($publisher);
+
+        $processor->shouldNotReceive('process');
+
+        $consumer = new TransferMessageConsumer($processor, $retryPolicy);
+        $consumer->consume([
+            'meta' => [
+                'version' => '1.0',
+                'event' => 'transfer.completed',
+            ],
+            'payload' => [
+                'payer_id' => 5,
+                'payee_id' => 6,
+                'amount' => 1000,
+            ],
+        ], true);
+
+        $this->assertCount(0, $publisher->published);
+    }
+
+    public function test_skips_retry_publish_in_dry_run(): void
+    {
+        $processor = $this->mock(KafkaTransferProcessor::class);
+        $publisher = $this->createFakePublisher();
+        $retryPolicy = new TransferRetryPolicy($publisher);
 
         $payload = [
             'transfer_id' => '123',
@@ -237,7 +275,11 @@ final class TransferMessageConsumerTest extends TestCase
 
         $processor->shouldReceive('process')
             ->once()
-            ->with($payload)
+            ->with($this->callback(static function (TransferMessagePayload $dto): bool {
+                return $dto->transferId === 123
+                    && $dto->payerId === 1
+                    && $dto->payeeId === 2;
+            }), true)
             ->andThrow($exception);
 
         $consumer = new TransferMessageConsumer($processor, $retryPolicy);
@@ -247,57 +289,9 @@ final class TransferMessageConsumerTest extends TestCase
                 'event' => 'transfer.completed',
             ],
             'payload' => $payload,
-        ]);
+        ], true);
 
-        $entries = $context->flush();
-        $this->assertCount(1, $entries);
-        $this->assertSame('kafka.publish', $entries[0]['action']);
-        $this->assertSame('wallet.transfer.retry', $entries[0]['context']['topic']);
-        $this->assertSame('123', $entries[0]['context']['key']);
-    }
-
-    public function test_records_dlq_publish_in_dry_run(): void
-    {
-        $context = new DryRunContext(new DryRunRecorder());
-        $context->enable();
-
-        $publisher = $this->createMock(TransferPublisherInterface::class);
-        $publisher->expects($this->never())->method('publish');
-
-        $retryPolicy = new TransferRetryPolicy(new DryRunTransferPublisher($context, $publisher));
-
-        $processor = $this->mock(KafkaTransferProcessor::class);
-
-        $payload = [
-            'transfer_id' => '123',
-            'payer_id' => 1,
-            'payee_id' => 2,
-            'amount' => 1000,
-        ];
-
-        $message = [
-            'meta' => [
-                'version' => '1.0',
-                'event' => 'transfer.completed',
-                'retry' => ['attempt' => 3],
-            ],
-            'payload' => $payload,
-        ];
-
-        $exception = new RuntimeException('processor failed');
-
-        $processor->shouldReceive('process')
-            ->once()
-            ->with($payload)
-            ->andThrow($exception);
-
-        $consumer = new TransferMessageConsumer($processor, $retryPolicy);
-        $consumer->consume($message);
-
-        $entries = $context->flush();
-        $this->assertCount(1, $entries);
-        $this->assertSame('kafka.publish', $entries[0]['action']);
-        $this->assertSame('wallet.transfer.dlq', $entries[0]['context']['topic']);
+        $this->assertCount(0, $publisher->published);
     }
 
     private function createFakePublisher(): object

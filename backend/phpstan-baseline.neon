@@ -15,20 +15,26 @@ parameters:
 		-
 			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
 			identifier: method.notFound
-			count: 6
-			path: tests/Unit/Services/TransferMessageConsumerTest.php
-
-		-
-			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
-			identifier: method.notFound
 			count: 5
-			path: tests/Unit/Services/TransferRetryMessageConsumerTest.php
+			path: tests/Unit/Services/TransferMessageConsumerTest.php
 
 		-
 			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
 			identifier: method.notFound
 			count: 6
 			path: tests/Unit/Services/WalletTransferServiceTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:never\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/Console/ConsumeTransfersCommandTest.php
+
+		-
+			message: '#^Call to an undefined method Mockery\\ExpectationInterface\|Mockery\\HigherOrderMessage\:\:once\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: tests/Feature/Console/ConsumeTransfersCommandTest.php
 
 		-
 			message: '#^Parameter \#1 \$authorizer of class App\\Services\\WalletTransferService constructor expects App\\Services\\AuthorizerClient, Mockery\\MockInterface given\.$#'

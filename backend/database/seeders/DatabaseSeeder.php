@@ -17,9 +17,6 @@ class DatabaseSeeder extends Seeder
 
     private const int INITIAL_BALANCE_CENTS = 100_000;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
         $this->createUser('Common User 1', 'common+1@example.com', UserType::Common);

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Services\DryRun\DryRunContext;
 use App\Services\TransferMessageConsumer;
 use Illuminate\Console\Command;
 use Junges\Kafka\Contracts\ConsumerMessage;
@@ -13,13 +12,12 @@ use Junges\Kafka\Facades\Kafka;
 
 final class ConsumeTransfersCommand extends Command
 {
-    protected $signature = 'kafka:consume-transfers {--dry-run : Simulate without committing offsets or side effects}';
+    protected $signature = 'kafka:consume-transfers {--dry-run : Simulate without committing offsets or side effects} {--daemon : Run continuously in daemon mode with per-topic batch configuration}';
 
     protected $description = 'Consume transfer events from the Kafka wallet.transfer.completed topic';
 
     public function __construct(
         private readonly TransferMessageConsumer $consumer,
-        private readonly DryRunContext $context,
     ) {
         parent::__construct();
     }
@@ -27,16 +25,14 @@ final class ConsumeTransfersCommand extends Command
     public function handle(): int
     {
         $isDryRun = (bool) $this->option('dry-run');
+        $isDaemon = (bool) $this->option('daemon');
 
-        $this->context->disable();
         if ($isDryRun) {
-            $this->context->enable();
             $this->warn('[DRY-RUN] Enabled — no offsets will be committed and no side effects will be persisted.');
         }
 
         $topic = (string) config('kafka.topic_completed', 'wallet.transfer.completed');
         $consumerGroup = (string) config('kafka.consumer_group_id', 'wallet-transfer-consumers');
-        $commitAfterHandle = !$isDryRun && (bool) config('kafka.commit_after_handle', true);
 
         $this->info("Starting Kafka consumer for topic [{$topic}]...");
 
@@ -44,45 +40,58 @@ final class ConsumeTransfersCommand extends Command
             $this->warn('[DRY-RUN] Kafka consumer will not commit offsets.');
         }
 
-        /** @var MessageConsumer|null $kafkaConsumer */
-        $kafkaConsumer = null;
-
         $builder = Kafka::consumer([$topic], $consumerGroup)
-            ->withHandler(function (ConsumerMessage $message) use ($commitAfterHandle, &$kafkaConsumer): void {
-                $this->consumer->consume($message->getBody());
+            ->withManualCommit()
+            ->withHandler(function (ConsumerMessage $message, MessageConsumer $consumer) use ($isDryRun): void {
+                $body = $message->getBody();
+                $payload = $body['payload'] ?? null;
+                $transferId = is_array($payload) ? ($payload['transfer_id'] ?? null) : null;
+                $transferIdStr = is_int($transferId) || is_string($transferId) ? (string) $transferId : 'unknown';
 
-                // Manual commit after successful processing gives at-least-once semantics:
-                // if the process crashes after processing but before commit, the message will be
-                // redelivered and the Redis idempotency key prevents duplicate side effects.
-                // The trade-off is slightly higher latency and the risk of never committing if
-                // the handler succeeds but commit fails, causing reprocessing until TTL expires.
-                if ($commitAfterHandle && !is_null($kafkaConsumer)) {
-                    $kafkaConsumer->commit($message);
+                $this->info("Kafka message received. [transfer_id={$transferIdStr}]");
+
+                try {
+                    $this->consumer->consume($body, $isDryRun);
+                    $this->info("Kafka message processed successfully. [transfer_id={$transferIdStr}]");
+                } catch (\Throwable $exception) {
+                    $this->error("Kafka message processing failed. [transfer_id={$transferIdStr}] [exception={$exception->getMessage()}]");
+
+                    throw $exception;
                 }
 
-                if ($this->context->isEnabled()) {
-                    $this->flushDryRunOutput();
+                if (!$isDryRun) {
+                    $consumer->commit($message);
+                    $this->info("Kafka message offset committed. [transfer_id={$transferIdStr}]");
+
+                    return;
                 }
+
+                $this->warn('[DRY-RUN] Kafka offset commit skipped.');
             });
 
-        $builder = $builder->withManualCommit();
-
-        if (!$isDryRun && !$commitAfterHandle) {
-            $builder = $builder->withAutoCommit();
+        if ($isDaemon) {
+            $topicConfig = $this->resolveTopicConfig($topic);
+            $builder = $builder->withMaxMessages($topicConfig['limit_messages']);
         }
 
-        $kafkaConsumer = $builder->build();
-
-        $kafkaConsumer->consume();
+        $builder->build()->consume();
 
         return self::SUCCESS;
     }
 
-    private function flushDryRunOutput(): void
+    /**
+     * @return array{limit_messages: int}
+     */
+    private function resolveTopicConfig(string $topic): array
     {
-        foreach ($this->context->flush() as $entry) {
-            $summary = json_encode($entry['context'], JSON_THROW_ON_ERROR);
-            $this->warn("[DRY-RUN] {$entry['action']}: {$summary}");
+        $config = config("kafka.topics.{$topic}", []);
+
+        if (!is_array($config)) {
+            $config = [];
         }
+
+        return [
+            'limit_messages' => isset($config['limit_messages']) && is_int($config['limit_messages']) ? $config['limit_messages'] : 100,
+        ];
     }
 }

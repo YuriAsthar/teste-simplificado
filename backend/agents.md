@@ -12,13 +12,13 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 | `./docker/init-multi-db.sql` | Database initialization script | SQL |
 | `./Dockerfile` | PHP 8.4-FPM container definition with PHP-FPM healthcheck support; installs `pdo_pgsql`, `pgsql`, `zip`, and `sockets` PHP extensions | Docker |
 | `./docker-compose.yml` | Multi-service orchestration with service_healthy dependency | Docker Compose |
-| `./.env.example` | Compose host port template (NGINX_HOST_PORT) and Laravel environment template; Kafka defaults live in `config/kafka.php` | Config |
-| `./.env.testing` | Testing environment config; overrides `KAFKA_BROKERS` for host-side test runners | Config |
+| `./.env.example` | Compose host port template (NGINX_HOST_PORT) and Laravel environment template; `LOG_CHANNEL=stdout` so container logs go to Docker stdout. Kafka defaults live in `config/kafka.php`. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` was removed because `ConsumeTransfersCommand` no longer uses a sleep-based daemon loop. | Config |
+| `./.env.testing` | Testing environment config; `LOG_CHANNEL=stdout`. Overrides `KAFKA_BROKERS` for host-side test runners. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` and `KAFKA_CONSUMER_GROUP_ID_RETRY` were removed. | Config |
 | `./ecs.php` | EasyCodingStandard configuration | Config |
 | `./phpstan.neon` | PHPStan analysis configuration | Config |
 | `./phpstan-baseline.neon` | PHPStan baseline rules | Config |
 | `./rector.php` | Rector refactoring configuration | Config |
-| `./phpmd.xml` | PHPMD ruleset and exclusions | Config |
+| `./phpmd.xml` | PHPMD ruleset and exclusions (BooleanArgumentFlag and ElseExpression excluded for dry-run bool parameters) | Config |
 | `./agents.md` | Laravel application documentation | Doc |
 
 ## Services
@@ -34,6 +34,29 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 - Laravel runs as www-data user
 - Database migrations use healthcheck dependency
 - Alternative ports used to avoid conflicts (64xx, 73xx, 66xx, 166xx, 10092)
+
+## Clean Code Conventions
+
+### Container Logging
+- Default log channel is `stdout` (`config/logging.php`) using Monolog `StreamHandler` on `php://stdout`, so `docker compose logs app` captures structured application logs.
+- Keep `LOG_STACK=stdout` in `.env.example`, `.env.testing`, and `.env.ci` to preserve stdout output when the stack channel is used.
+
+### No Inline Comments
+- Code must be self-explanatory through naming and structure.
+- Do NOT use `//` inline comments to explain what code does.
+- Docblocks (`/** */`) are allowed for API documentation only.
+- If logic needs explanation, refactor the code (rename variables, extract methods) rather than adding comments.
+
+### Logging Imports
+- Always add `use Illuminate\Support\Facades\Log;` when calling `Log::` in namespaced classes.
+- Never rely on unqualified `Log` inside a namespace (e.g. `App\Services`): PHP resolves it as `App\Services\Log`, which does not exist.
+
+### PHPMD
+- Do not suppress PHPMD warnings with `@SuppressWarnings` annotations; address the root cause instead.
+- If a class name triggers `LongClassName`, shorten the name rather than suppressing the rule.
+
+### Eloquent Model Attributes
+- Prefer `protected $fillable` and `protected $hidden` over Laravel 13 `#[Fillable]` / `#[Hidden]` attributes for consistency across the codebase.
 
 ## Setup
 1. Copy `.env.example` to `.env` to set `NGINX_HOST_PORT` (default 8080) and configure the Laravel sandbox environment.

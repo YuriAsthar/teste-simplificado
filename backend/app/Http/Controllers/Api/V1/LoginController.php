@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
+use App\Http\Resources\LoginResponseResource;
 use App\Services\LoginService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
-final class TokenController extends Controller
+final readonly class LoginController
 {
     public function __construct(
         private LoginService $loginService,
@@ -24,22 +25,24 @@ final class TokenController extends Controller
         );
 
         if (is_null($result)) {
+            Log::warning('Login failed: invalid credentials.', [
+                'email' => $request->validated('email'),
+            ]);
+
             return response()->json([
                 'message' => __('auth.failed'),
             ], 401);
         }
 
-        $user = $result['user'];
-        $accessToken = $result['access_token'];
+        Log::info('Login succeeded.', [
+            'user_id' => $result['user']->id,
+        ]);
 
         return response()->json([
-            'data' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'token' => $accessToken->plainTextToken,
-                'token_type' => 'Bearer',
-            ],
+            'data' => new LoginResponseResource(
+                $result['user'],
+                $result['access_token'],
+            ),
         ]);
     }
 }

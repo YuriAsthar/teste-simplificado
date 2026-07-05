@@ -14,8 +14,6 @@ namespace App\Enums;
  */
 enum DocumentType: string
 {
-    // ─── Americas ────────────────────────────────────────────────────
-
     /** Argentine tax identification number (CUIT). */
     case ArCuit = 'ar_cuit';
 
@@ -76,8 +74,6 @@ enum DocumentType: string
     /** Venezuelan tax identification number (RIF). */
     case VeRif = 've_rif';
 
-    // ─── Europe / EU ─────────────────────────────────────────────────
-
     /** Andorran non-resident tax number (NRT). */
     case AdNrt = 'ad_nrt';
 
@@ -128,8 +124,6 @@ enum DocumentType: string
 
     /** Israeli VAT identification number. */
     case IlVat = 'il_vat';
-
-    // ─── Asia-Pacific ────────────────────────────────────────────────
 
     /** Australian Business Number (ABN). */
     case AuAbn = 'au_abn';
@@ -190,8 +184,6 @@ enum DocumentType: string
 
     /** Vietnamese tax identification number (MST). */
     case VnTin = 'vn_tin';
-
-    // ─── Middle East / Africa ────────────────────────────────────────
 
     /** United Arab Emirates Tax Registration Number (TRN). */
     case AeTrn = 'ae_trn';
@@ -261,7 +253,6 @@ enum DocumentType: string
             'NOR', 'NO' => [self::NoVat, self::NoVoec],
             'AND', 'AD' => [self::AdNrt],
             'LIE', 'LI' => [self::LiUid, self::LiVat],
-            // EU countries that only use EU VAT
             'AUT', 'AT', 'BEL', 'BE', 'BGR', 'BG', 'CYP', 'CY', 'CZE', 'CZ', 'DNK', 'DK', 'EST', 'EE', 'FIN', 'FI', 'GRC', 'GR', 'IRL', 'IE', 'LVA', 'LV', 'LTU', 'LT', 'LUX', 'LU', 'MLT', 'MT', 'NLD', 'NL', 'POL', 'PL', 'PRT', 'PT', 'ROU', 'RO', 'SVK', 'SK', 'SVN', 'SI', 'SWE', 'SE' => [self::EuVat, self::EuOssVat],
             'AUS', 'AU' => [self::AuAbn, self::AuArn],
             'CHN', 'CN' => [self::CnTin],

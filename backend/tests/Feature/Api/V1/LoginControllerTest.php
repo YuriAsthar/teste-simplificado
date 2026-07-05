@@ -8,7 +8,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
 
-final class TokenControllerTest extends TestCase
+final class LoginControllerTest extends TestCase
 {
     public function test_it_issues_token_for_valid_credentials(): void
     {

@@ -25,6 +25,8 @@ final class RetryNotificationsCommand extends Command
     {
         $count = 0;
 
+        $this->info('Starting notification retry scan.');
+
         Transfer::query()
             ->pendingNotification()
             ->chunkById(100, static function ($transfers) use ($dispatcher, &$count): void {

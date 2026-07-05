@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
 use App\Services\LogoutService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-final class LogoutController extends Controller
+final readonly class LogoutController
 {
     public function __construct(
-        private readonly LogoutService $logoutService,
+        private LogoutService $logoutService,
     ) {
     }
 

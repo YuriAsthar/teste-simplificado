@@ -6,9 +6,9 @@ HTTP layer for the API-only wallet application: controllers, FormRequests, and A
 ## Structure
 | File/Folder | Purpose | Type |
 |-------------|---------|------|
-| `Controllers/Api/V1/` | API controllers (Register, Token, Transfer, Logout). | PHP |
+| `Controllers/Api/V1/` | API controllers (Register, Login, Transfer, Logout). | PHP |
 | `Requests/` | FormRequest validation classes. | PHP |
-| `Resources/` | API response resources (e.g. RegisterResponseResource). | PHP |
+| `Resources/` | API response resources (RegisterResponseResource, LoginResponseResource, TransferResponseResource). | PHP |
 
 ## Conventions
 - Controllers are thin: validation, authorization, and response formatting only.

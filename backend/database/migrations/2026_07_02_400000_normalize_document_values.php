@@ -57,6 +57,5 @@ return new class() extends Migration {
 
     public function down(): void
     {
-        // Backfill to canonical form is destructive and cannot be safely reversed.
     }
 };

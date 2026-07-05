@@ -63,7 +63,7 @@ Laravel's native health check endpoint.
 
 **Authentication:** None required
 
-**Response:** `200 OK`
+**Response:** Empty `200 OK` (no response body)
 
 **Status Code:** `200 OK`
 
@@ -88,9 +88,10 @@ Content-Type: application/json
   "name": "John Doe",
   "email": "john@example.com",
   "password": "SecurePassword123",
+  "password_confirmation": "SecurePassword123",
   "type": "common",
   "document_country": "BRA",
-  "document_type": "cpf",
+  "document_type": "br_cpf",
   "document_value": "12345678909"
 }
 ```
@@ -101,9 +102,10 @@ Content-Type: application/json
 | `name` | string | Yes | User's full name |
 | `email` | string | Yes | User's email address (must be unique) |
 | `password` | string | Yes | User's password (min 8 characters) |
-| `type` | string | Yes | User type: `common` or `merchant` |
+| `password_confirmation` | string | Yes | Must match `password` |
+| `type` | string | No | User type: `common` or `merchant` (default: `common`) |
 | `document_country` | string | Yes | Country code (ISO alpha-3, e.g., `BRA`) |
-| `document_type` | string | Yes | Document type (e.g., `cpf`, `cnpj`) |
+| `document_type` | string | Yes | Document type (e.g., `br_cpf`, `br_cnpj`) |
 | `document_value` | string | Yes | Document number |
 
 **Response (201 Created):**
@@ -114,15 +116,15 @@ Content-Type: application/json
     "name": "John Doe",
     "email": "john@example.com",
     "type": "common",
-    "access_token": "4|abcdefghijklmnopqrstuvwxyz123456"
+    "token": "4|abcdefghijklmnopqrstuvwxyz123456",
+    "token_type": "Bearer"
   }
 }
 ```
 
 **Status Codes:**
 - `201 Created`: User created successfully
-- `422 Unprocessable Entity`: Validation error
-- `409 Conflict`: Email already exists
+- `422 Unprocessable Entity`: Validation error or duplicate record (e.g., email already exists with code `duplicate_record`)
 
 ---
 
@@ -160,7 +162,8 @@ Content-Type: application/json
     "id": 1,
     "name": "John Doe",
     "email": "john@example.com",
-    "access_token": "4|abcdefghijklmnopqrstuvwxyz123456"
+    "token": "4|abcdefghijklmnopqrstuvwxyz123456",
+    "token_type": "Bearer"
   }
 }
 ```
@@ -250,14 +253,8 @@ Content-Type: application/json
 {
   "data": {
     "id": 123,
-    "payer_id": 1,
-    "payee_id": 2,
-    "amount": 5000,
-    "currency": "BRL",
     "status": "completed",
-    "failure_reason": null,
-    "created_at": "2026-07-05T12:34:56-03:00",
-    "updated_at": "2026-07-05T12:34:56-03:00"
+    "failure_reason": null
   }
 }
 ```

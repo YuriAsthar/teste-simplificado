@@ -30,13 +30,15 @@ The application uses RabbitMQ as the primary queue driver for sending notificati
 Configure RabbitMQ in `.env`:
 
 ```dotenv
-RABBITMQ_HOST=db
+RABBITMQ_HOST=rabbitmq
 RABBITMQ_PORT=5672
 RABBITMQ_USER=guest
 RABBITMQ_PASSWORD=guest
 RABBITMQ_VHOST=/
 RABBITMQ_QUEUE=default
 ```
+
+Outside Docker, use `RABBITMQ_HOST=127.0.0.1`.
 
 ### Docker Setup
 
@@ -182,10 +184,10 @@ final readonly class NotificationService
     public function notifyTransfer(Transfer $transfer): void
     {
         $payload = [
+            'user' => $transfer->payee->email ?? (string) $transfer->payee_id,
+            'message' => "Transfer #{$transfer->id} received.",
             'transfer_id' => $transfer->id,
-            'payee_email' => $transfer->payee->email,
-            'amount' => $transfer->amount,
-            'status' => $transfer->status->value,
+            'amount' => (int) $transfer->getRawOriginal('amount'),
         ];
 
         $response = Http::post($this->url, $payload);

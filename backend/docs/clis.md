@@ -105,7 +105,7 @@ php artisan schedule:run
 ```
 
 **Purpose:**
-Executes any tasks defined in `routes/console.php` that are due to run. In this application, `outbox:publish` is scheduled to run every minute.
+Executes any tasks defined in `routes/console.php` that are due to run. In this application, `idempotency:cleanup-stale-keys` and `outbox:publish --batch=100` are both scheduled to run every minute.
 
 **Example:**
 ```bash

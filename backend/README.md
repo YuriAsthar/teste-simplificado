@@ -71,17 +71,17 @@ docker compose run --rm db psql -U wallet_user -d wallet_sandbox
 
 | Service | Port | Description |
 |---------|------|-------------|
-| app | 9000 | PHP 8.4-FPM |
-| web | 8080 | Nginx |
+| app | 8000 | PHP 8.4-FPM / artisan serve |
 | db | 6432 | PostgreSQL 16 |
 | redis | 7379 | Redis 7 |
 | rabbitmq | 6672, 16672 | RabbitMQ 3 Management |
 | kafka | 10092 | Kafka broker |
+| queue | — | RabbitMQ worker |
 
 ## Environment
 
 Copy `.env.example` to `.env` and configure:
-- `NGINX_HOST_PORT`: Nginx host port (default: 8080)
+- The `app` service is exposed on port `8000` directly (no nginx).
 - `DB_DATABASE`: PostgreSQL database name (`wallet_sandbox`)
 
 Generate application key:

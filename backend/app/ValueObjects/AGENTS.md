@@ -15,4 +15,4 @@ Immutable, typed data transfer objects used to carry validated request data from
 - Optional domain values use nullable properties; services apply sensible defaults when values are absent.
 
 ## Related
-- Parent: ../agents.md
+- Parent: ../AGENTS.md

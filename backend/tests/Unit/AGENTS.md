@@ -24,5 +24,5 @@ PHPUnit unit tests for isolated, fast components: services, jobs, and domain hel
 - PHPStan baseline contains intentional Mockery-related ignores for test mocks.
 
 ## Related
-- Parent: /app/tests/agents.md
-- Related: /app/tests/Feature/agents.md
+- Parent: /app/tests/AGENTS.md
+- Related: /app/tests/Feature/AGENTS.md

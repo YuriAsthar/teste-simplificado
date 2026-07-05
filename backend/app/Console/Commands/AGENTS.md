@@ -14,5 +14,5 @@ Artisan commands for operational tasks.
 - Return `self::SUCCESS` or `self::FAILURE`.
 
 ## Related
-- Parent: /app/agents.md
-- Related: /app/config/agents.md
+- Parent: /app/AGENTS.md
+- Related: /app/config/AGENTS.md

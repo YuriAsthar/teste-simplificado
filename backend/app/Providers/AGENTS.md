@@ -12,5 +12,5 @@ Application service providers for dependency injection and event registration.
 - Providers are registered in `bootstrap/providers.php`.
 
 ## Related
-- Parent: /app/agents.md
-- Related: /app/Events/agents.md, /app/Listeners/agents.md, /app/bootstrap/agents.md
+- Parent: /app/AGENTS.md
+- Related: /app/Events/AGENTS.md, /app/Listeners/AGENTS.md, /app/bootstrap/AGENTS.md

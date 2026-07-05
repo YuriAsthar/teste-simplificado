@@ -15,5 +15,5 @@ Validation rules and authorization gates for incoming API requests.
 - Custom validation messages are declared in `messages()` when the default Laravel wording would leak sensitive information or conflict with project terminology.
 
 ## Related
-- Parent: /app/agents.md
-- Related: /app/Http/Controllers/Api/V1/agents.md
+- Parent: /app/AGENTS.md
+- Related: /app/Http/Controllers/Api/V1/AGENTS.md

@@ -26,5 +26,5 @@ Business-logic services. The directory contains both the legacy Kafka/publisher 
 - **Logging**: Always use `use Illuminate\Support\Facades\Log;` at the top of any file that calls `Log::`. Inside `App\Services` (or any namespace other than the root), an unqualified `Log` resolves to `App\Services\Log`, causing a "Class not found" error. The facade import is mandatory even if `Psr\Log\LoggerInterface` is also imported.
 
 ## Related
-- Parent: ./agents.md
-- Related: ./app/Models/agents.md, ./app/Http/Controllers/Api/V1/agents.md
+- Parent: ./AGENTS.md
+- Related: ./Models/AGENTS.md, ../Http/Controllers/Api/V1/AGENTS.md

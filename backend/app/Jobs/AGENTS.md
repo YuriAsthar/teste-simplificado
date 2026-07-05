@@ -16,4 +16,4 @@ Queueable job classes responsible for asynchronous side-effects, primarily trans
 - Throw `App\Exceptions\NotificationException` from the service so the queue worker can retry; log permanent failure in `failed()`.
 
 ## Related
-- Parent: /app/agents.md
+- Parent: /app/AGENTS.md

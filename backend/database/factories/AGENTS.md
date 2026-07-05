@@ -13,5 +13,5 @@ Model factories for test data generation.
 - Factories are deterministic and leverage model relations for valid test data.
 
 ## Related
-- Parent: /app/agents.md
-- Related: /app/Models/agents.md, /app/tests/agents.md
+- Parent: /app/AGENTS.md
+- Related: /app/Models/AGENTS.md, /app/tests/AGENTS.md

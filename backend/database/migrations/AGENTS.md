@@ -21,5 +21,5 @@ Database schema definitions for users, wallets, transfers, cache, jobs, and idem
 - Do not use `Blueprint::after()`; add new columns at the end of the table.
 
 ## Related
-- Parent: /app/agents.md
-- Related: /app/Models/agents.md
+- Parent: /app/AGENTS.md
+- Related: /app/Models/AGENTS.md

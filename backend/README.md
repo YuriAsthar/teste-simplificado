@@ -1,244 +1,91 @@
 # Wallet API
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="300" alt="Laravel Logo">
-</p>
+Laravel 13 API-only digital wallet with transfers between users. Endpoints for authentication and transfers, running on PostgreSQL, Redis, RabbitMQ, and Kafka.
 
-Aplicação **API-only** em **Laravel 13** para carteira digital e transferências entre usuários. A API expõe endpoints JSON para autenticação e transferências, executada sobre PostgreSQL, Redis, RabbitMQ e Kafka.
+## Documentation
 
----
+- [CLI Commands](docs/clis.md)
+- [Queue & Jobs](docs/queue.md)
+- [API Endpoints](docs/api-requests.md)
+- [Kafka Usage](docs/kafka.md)
 
-## Visão Geral
+## Quick Start
 
-- **Laravel 13.8+**, `laravel/sanctum ^4.3`.
-- Requer **PHP ^8.3**; imagem Docker `php:8.4-fpm`.
-- Driver de fila RabbitMQ (`vladimir-yuldashev/laravel-queue-rabbitmq ^15.0`).
-- Produtor/consumidor Kafka via `mateusjunges/laravel-kafka ^2.11`.
-- Nenhum build Node/Vite — projeto 100% API.
+```bash
+# Start containers
+docker compose up -d
 
----
+# Run migrations
+docker compose run --rm app php artisan migrate --force
 
-## Stack / Infraestrutura
-
-Definida em [`docker-compose.yml`](./docker-compose.yml) dentro de `backend/`:
-
-| Serviço | Imagem | Porta / Observação |
-|---------|--------|--------------------|
-| `app` | `php:8.4-fpm` (Dockerfile em `backend/`) | FPM 9000, monta `.` em `/var/www/html` |
-| `web` | `nginx:1.25-alpine` | `${NGINX_HOST_PORT:-8080}:80` |
-| `db` | `postgres:16` | banco `wallet_sandbox`, usuário `wallet_user` |
-| `redis` | `redis:7-alpine` | cache e sessões |
-| `rabbitmq` | `rabbitmq:3-management` | fila de jobs/notificações |
-| `kafka` | `confluentinc/cp-kafka:7.7.1` | publicação de eventos de transferência |
-
-> O `Dockerfile` e o `docker-compose.yml` ficam dentro de `backend/`.
-
----
-
-## Endpoints
-
-Todas as respostas são JSON. Rotas autenticadas exigem `Authorization: Bearer <token>`.
-
-| Método | Endpoint | Autenticação | Descrição |
-|--------|----------|--------------|-----------|
-| GET | `/` | — | Health check leve (JSON) |
-| GET | `/up` | — | Health check nativo do Laravel |
-| POST | `/api/v1/auth/register` | — | Cria usuário, carteira e emite token |
-| POST | `/api/v1/auth/login` | — | Emite token Sanctum a partir de e-mail/senha |
-| POST | `/api/v1/auth/logout` | `auth:sanctum` | Revoga o token atual |
-| POST | `/api/v1/transfer` | `auth:sanctum` | Executa transferência entre carteiras |
-
-### Exemplos de payload
-
-**Registrar usuário (`POST /api/v1/auth/register`)**
-
-```json
-{
-  "name": "João Silva",
-  "email": "joao@example.com",
-  "password": "senhaSegura123",
-  "type": "common",
-  "document_country": "BRA",
-  "document_type": "cpf",
-  "document_value": "12345678909"
-}
+# Run tests
+docker compose run --rm app composer test
 ```
 
-- `type`: `common` ou `merchant`.
-- `document_country`: código alpha de 3 letras (ex.: `BRA`).
-- Documentos brasileiros (`BRA`) validam CPF/CNPJ automaticamente.
+## Common Commands
 
-**Transferir (`POST /api/v1/transfer`)**
+### Code Quality
 
-```http
-Idempotency-Key: <uuid-único>
-Authorization: Bearer <token>
-Content-Type: application/json
+```bash
+# Lint code
+docker compose run --rm app composer lint
+
+# Auto-fix linting issues
+docker compose run --rm app composer lint-fix
+
+# Run static analysis
+docker compose run --rm app composer stan
+
+# Run Rector refactoring
+docker compose run --rm app composer rector
+
+# Run PHPMD
+docker compose run --rm app composer phpmd
 ```
 
-```json
-{
-  "payee_id": 2,
-  "amount": 1000,
-  "currency": "BRL"
-}
+### Testing
+
+```bash
+# Run full test suite
+docker compose run --rm app composer test
+
+# Run specific test
+docker compose run --rm app ./vendor/bin/phpunit --filter=WalletTransferServiceTest
 ```
 
-- `amount` é um **inteiro em centavos** (`MoneyCast` valida apenas `int`).
-- `Idempotency-Key` é obrigatório.
+### Scheduler
 
----
+```bash
+# Run scheduled tasks manually
+docker compose run --rm app php artisan schedule:run
+```
 
-## Autenticação
+### Database Access
 
-- Tokens pessoais do **Laravel Sanctum**.
-- Login valida contra o guard `web` (`AUTH_GUARD=web`).
-- Ao registrar, o evento `UserCreated` dispara o listener `CreateUserWallet`, que cria automaticamente a carteira do usuário.
+```bash
+# Connect to PostgreSQL
+docker compose run --rm db psql -U wallet_user -d wallet_sandbox
+```
 
----
+## Services
 
-## Regras de Transferência
+| Service | Port | Description |
+|---------|------|-------------|
+| app | 9000 | PHP 8.4-FPM |
+| web | 8080 | Nginx |
+| db | 6432 | PostgreSQL 16 |
+| redis | 7379 | Redis 7 |
+| rabbitmq | 6672, 16672 | RabbitMQ 3 Management |
+| kafka | 10092 | Kafka broker |
 
-O serviço de transferência (`WalletTransferService`) executa dentro de uma transação com **lock pessimista** e valida:
+## Environment
 
-- pagador e recebedor não podem ser o mesmo usuário;
-- valor (`amount`) maior que zero;
-- ambas as carteiras ativas;
-- **lojista (`merchant`) não pode pagar**, apenas receber;
-- pagador e recebedor devem usar a mesma moeda (`currency`);
-- saldo suficiente na carteira do pagador;
-- autorização externa via `util.devi.tools/api/v2/authorize`.
+Copy `.env.example` to `.env` and configure:
+- `NGINX_HOST_PORT`: Nginx host port (default: 8080)
+- `DB_DATABASE`: PostgreSQL database name (`wallet_sandbox`)
 
-Transferências reprovadas são registradas com `status = failed` e um `failure_reason`.
+Generate application key:
 
----
-
-## Fluxo Assíncrono / Outbox
-
-Após uma transferência ser concluída:
-
-1. Um registro `OutboxEvent` é criado com status `pending`.
-2. O comando `php artisan outbox:publish` publica eventos pendentes no tópico Kafka `wallet.transfer.completed`.
-3. Os comandos consumidores leem o tópico:
-   - `kafka:consume-transfers`
-   - `kafka:consume-retry-transfers`
-4. O consumidor processa a mensagem e despacha `SendNotificationJob` na fila RabbitMQ.
-5. A notificação é enviada para `util.devi.tools/api/v1/notify`.
-6. Notificações falhas podem ser reprocessadas via `notifications:retry`.
-7. Chaves de idempotência antigas são removidas por `cleanup:stale-idempotency-keys`.
-8. `kafka:produce-transfer` é um comando auxiliar para debug/produção manual.
-
----
-
-## Setup Local
-
-1. Copie o `.env.example` de `backend/` para `.env` (define `NGINX_HOST_PORT`):
-
-   ```bash
-   cd backend
-   cp .env.example .env
-   ```
-
-2. Suba a stack (o Dockerfile de `backend/` é usado):
-
-   ```bash
-   docker compose up -d --build
-   ```
-
-3. Gere a chave da aplicação:
-
-   ```bash
-   docker compose run --rm app php artisan key:generate
-   ```
-
-4. Execute as migrations:
-
-   ```bash
-   docker compose run --rm app php artisan migrate --force
-   ```
-
-> A correção manual de permissões (`chown`) não é necessária — o `Dockerfile` já define `www-data` corretamente.
-
----
-
-## Comandos Úteis
-
-> Todos os comandos Artisan e Composer devem rodar via `docker compose run --rm app` (nunca `docker compose exec`).
-
-### Desenvolvimento
-
-| Comando | Descrição |
-|---------|-----------|
-| `docker compose run --rm app composer dev` | Inicia servidor + worker de fila + `pail` (tail de logs) |
-| `docker compose run --rm app composer test` | Executa suite PHPUnit |
-| `docker compose run --rm app composer lint` | Verifica padrão de código (ECS) |
-| `docker compose run --rm app composer lint-fix` | Aplica correções automáticas do ECS |
-| `docker compose run --rm app composer stan` | Executa PHPStan |
-| `docker compose run --rm app composer rector` | Executa Rector |
-| `docker compose run --rm app composer phpmd` | Executa PHPMD |
-
-### Artisan específicos
-
-| Comando | Descrição |
-|---------|-----------|
-| `php artisan outbox:publish` | Publica eventos pendentes no Kafka |
-| `php artisan kafka:consume-transfers` | Consome transferências concluídas do Kafka |
-| `php artisan kafka:consume-retry-transfers` | Consome tópico de retry |
-| `php artisan notifications:retry` | Reprocessa notificações falhas |
-| `php artisan cleanup:stale-idempotency-keys` | Remove chaves de idempotência expiradas |
-| `php artisan kafka:produce-transfer` | Comando de debug para produzir mensagem no Kafka |
-
-### Banco de dados
-
-| Comando | Descrição |
-|---------|-----------|
-| `docker compose exec db psql -U wallet_user -d wallet` | Acessar o shell do PostgreSQL dentro do container `db` |
-
----
-
-## Ferramentas de Qualidade
-
-- **ECS** (`symplify/easy-coding-standard`) — padrões de estilo.
-- **PHPStan** + **Larastan** — análise estática.
-- **Rector** — refatoração automatizada.
-- **PHPMD** — detecção de código problemático.
-- **PHPUnit 12** — testes unitários e de feature.
-
-Não há build frontend; a CI roda apenas os scripts Composer listados acima.
-
----
-
-## Modelos e Enums Principais
-
-- **Models:** `User`, `Wallet` (`MoneyCast` no `balance`), `Transfer`, `IdempotencyKey`, `OutboxEvent`.
-- **Enums:** `UserType`, `DocumentType`, `CurrencyType`, `TransferStatus`, `FailureReason`, `IdempotencyKeyStatus`, `OutboxStatus`, `AuthorizerResult`.
-
-## Convenções de Código
-
-### Modelos Eloquent
-Todos os modelos utilizam a sintaxe tradicional de propriedades (`protected $fillable`, `protected $hidden`) em vez dos atributos PHP 8 do Laravel 13 (`#[Fillable(...)]`, `#[Hidden(...)]`). Essa escolha mantém consistência com o restante do projeto e facilita a leitura para desenvolvedores familiarizados com versões anteriores do framework.
-
----
-
-## Variáveis de Ambiente Relevantes
-
-As principais já vêm preenchidas em `.env.example`:
-
-| Variável | Significado |
-|----------|-------------|
-| `APP_URL` | `http://localhost:8080` |
-| `AUTH_GUARD` | `web` (guard usado na autenticação) |
-| `DB_CONNECTION` / `DB_HOST` / `DB_DATABASE` | PostgreSQL: `pgsql`, `db`, `wallet_sandbox` |
-| `QUEUE_CONNECTION` | `rabbitmq` |
-| `CACHE_STORE` | `redis` |
-| `RABBITMQ_HOST` / `_PORT` / `_USER` / `_PASSWORD` | Configuração do RabbitMQ |
-| `KAFKA_BROKERS` | Broker Kafka (default via `config/kafka.php`: `kafka:9092` no Docker) |
-| `KAFKA_TOPIC_COMPLETED` / `KAFKA_TOPIC_DLQ` / `KAFKA_TOPIC_RETRY` | Tópicos Kafka (padrão em `config/kafka.php`) |
-| `KAFKA_IDEMPOTENCY_TTL` | TTL de idempotência Kafka (segundos; default em `config/kafka.php`) |
-| `KAFKA_RETRY_ATTEMPTS` / `KAFKA_RETRY_BACKOFF_SECONDS` | Retry do consumidor Kafka (defaults em `config/kafka.php`) |
-
----
-
-## Licença
-
-O framework Laravel é software open-source licenciado sob [MIT license](https://opensource.org/licenses/MIT).
+```bash
+docker compose run --rm app php artisan key:generate
+```

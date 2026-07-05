@@ -19,7 +19,7 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 | `./phpstan-baseline.neon` | PHPStan baseline rules | Config |
 | `./rector.php` | Rector refactoring configuration | Config |
 | `./phpmd.xml` | PHPMD ruleset and exclusions (BooleanArgumentFlag and ElseExpression excluded for dry-run bool parameters) | Config |
-| `./agents.md` | Laravel application documentation | Doc |
+| `./AGENTS.md` | Laravel application documentation | Doc |
 
 ## Services
 - **app**: PHP 8.4-FPM with Laravel 13
@@ -95,5 +95,5 @@ docker compose run --rm app composer phpmd
 - Authentication is stateless via Sanctum bearer tokens: `POST /api/v1/auth/login` issues tokens; protected routes require `Authorization: Bearer <token>`. Account creation is public at `POST /api/v1/auth/register`, which also returns a bearer token. Registration requires three document fields: `document_country`, `document_type`, and `document_value`; `document_type` is validated against `DocumentType` and must be allowed for the provided country.
 
 ## Related
-- Self: ./agents.md
-- Parent: ../agents.md
+- Self: ./AGENTS.md
+- Parent: ../AGENTS.md

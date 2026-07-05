@@ -12,4 +12,4 @@ Value-object and primitive transformers for Eloquent models.
 - Prefer strict typing and explicit exceptions over silent coercion.
 
 ## Related
-- Parent: /app/agents.md
+- Parent: /app/AGENTS.md

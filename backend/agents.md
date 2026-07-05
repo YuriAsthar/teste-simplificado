@@ -12,8 +12,8 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 | `./docker/init-multi-db.sql` | Database initialization script | SQL |
 | `./Dockerfile` | PHP 8.4-FPM container definition with PHP-FPM healthcheck support; installs `pdo_pgsql`, `pgsql`, `zip`, and `sockets` PHP extensions | Docker |
 | `./docker-compose.yml` | Multi-service orchestration with service_healthy dependency | Docker Compose |
-| `./.env.example` | Compose host port template (NGINX_HOST_PORT) and Laravel environment template; Kafka defaults live in `config/kafka.php`. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` was removed because `ConsumeTransfersCommand` no longer uses a sleep-based daemon loop. | Config |
-| `./.env.testing` | Testing environment config; overrides `KAFKA_BROKERS` for host-side test runners. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` and `KAFKA_CONSUMER_GROUP_ID_RETRY` were removed. | Config |
+| `./.env.example` | Compose host port template (NGINX_HOST_PORT) and Laravel environment template; `LOG_CHANNEL=stdout` so container logs go to Docker stdout. Kafka defaults live in `config/kafka.php`. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` was removed because `ConsumeTransfersCommand` no longer uses a sleep-based daemon loop. | Config |
+| `./.env.testing` | Testing environment config; `LOG_CHANNEL=stdout`. Overrides `KAFKA_BROKERS` for host-side test runners. **Note:** `KAFKA_TOPIC_COMPLETED_DELAY` and `KAFKA_CONSUMER_GROUP_ID_RETRY` were removed. | Config |
 | `./ecs.php` | EasyCodingStandard configuration | Config |
 | `./phpstan.neon` | PHPStan analysis configuration | Config |
 | `./phpstan-baseline.neon` | PHPStan baseline rules | Config |
@@ -36,6 +36,10 @@ Complete Docker environment for Laravel 13 with PostgreSQL, Redis, RabbitMQ, Kaf
 - Alternative ports used to avoid conflicts (64xx, 73xx, 66xx, 166xx, 10092)
 
 ## Clean Code Conventions
+
+### Container Logging
+- Default log channel is `stdout` (`config/logging.php`) using Monolog `StreamHandler` on `php://stdout`, so `docker compose logs app` captures structured application logs.
+- Keep `LOG_STACK=stdout` in `.env.example`, `.env.testing`, and `.env.ci` to preserve stdout output when the stack channel is used.
 
 ### No Inline Comments
 - Code must be self-explanatory through naming and structure.

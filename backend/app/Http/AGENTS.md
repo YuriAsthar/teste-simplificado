@@ -17,4 +17,4 @@ HTTP layer for the API-only wallet application: controllers, FormRequests, and A
 - API resources format model data and related metadata (tokens, relationships) for JSON responses.
 
 ## Related
-- Parent: ../agents.md
+- Parent: ../AGENTS.md

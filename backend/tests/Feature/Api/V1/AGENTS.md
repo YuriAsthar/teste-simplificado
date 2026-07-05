@@ -14,5 +14,5 @@ End-to-end tests for version 1 API endpoints.
 - Prefer `assertJsonPath` and `assertJsonValidationErrors` for precise assertions.
 
 ## Related
-- Parent: ./tests/agents.md
-- Related: ./app/Http/Controllers/Api/V1/agents.md, ./app/Services/agents.md
+- Parent: ./tests/AGENTS.md
+- Related: ./app/Http/Controllers/Api/V1/AGENTS.md, ./app/Services/AGENTS.md

@@ -15,5 +15,5 @@ Application bootstrap for the Laravel 13 API-only wallet/transfer application.
 - No web/Blade frontend is wired into the bootstrap.
 
 ## Related
-- Parent: ../agents.md
-- Related: ../app/Http/Controllers/Api/V1/agents.md, ../routes/agents.md
+- Parent: ../AGENTS.md
+- Related: ../app/Http/Controllers/Api/V1/AGENTS.md, ../routes/AGENTS.md

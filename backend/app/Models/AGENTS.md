@@ -21,5 +21,5 @@ Eloquent models for the relational wallet/transfer domain.
 - Do **not** use Laravel 13 `#[Fillable(...)]` or `#[Hidden(...)]` attributes; they are functionally equivalent but create inconsistency with the rest of the project.
 
 ## Related
-- Parent: /app/agents.md
-- Related: /app/Casts/agents.md, /app/Enums/agents.md, /app/database/migrations/agents.md
+- Parent: /app/AGENTS.md
+- Related: /app/Casts/AGENTS.md, /app/Enums/AGENTS.md, /app/database/migrations/AGENTS.md

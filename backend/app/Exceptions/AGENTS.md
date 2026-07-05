@@ -14,5 +14,5 @@ Domain HTTP exceptions used by the transfer and idempotency flows. All are rende
 - Controllers do not catch these exceptions; global exception rendering handles API responses.
 
 ## Related
-- Parent: /app/agents.md
-- Related: /app/Services/agents.md, /app/Http/Controllers/Api/V1/agents.md, /app/bootstrap/app.php
+- Parent: /app/AGENTS.md
+- Related: /app/Services/AGENTS.md, /app/Http/Controllers/Api/V1/AGENTS.md, /app/bootstrap/app.php

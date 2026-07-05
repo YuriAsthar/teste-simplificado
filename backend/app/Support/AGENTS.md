@@ -12,5 +12,5 @@ Domain helpers and small utility classes used across the application.
 - All money assignments to Eloquent models must be integer cents because `MoneyCast` is strict int/int.
 
 ## Related
-- Parent: /app/agents.md
-- Related: /app/Casts/agents.md, /app/Http/Requests/agents.md
+- Parent: /app/AGENTS.md
+- Related: /app/Casts/AGENTS.md, /app/Http/Requests/AGENTS.md

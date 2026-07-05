@@ -17,5 +17,5 @@ Immutable value objects for messaging and service boundaries. These classes enca
 - PHPDoc `@param array<string, mixed>` on array parameters for PHPStan compliance
 
 ## Related
-- Parent: ../agents.md
-- Consumer: ../app/Services/agents.md
+- Parent: ../AGENTS.md
+- Consumer: ../app/Services/AGENTS.md

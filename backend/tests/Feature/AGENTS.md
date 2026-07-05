@@ -20,5 +20,5 @@ PHPUnit feature tests covering end-to-end HTTP flows, console commands, and mode
 - Tests reference model properties via `getKey()` and explicit `@var` annotations for PHPStan.
 
 ## Related
-- Parent: /app/tests/agents.md
-- Related: /app/tests/Unit/agents.md
+- Parent: /app/tests/AGENTS.md
+- Related: /app/tests/Unit/AGENTS.md

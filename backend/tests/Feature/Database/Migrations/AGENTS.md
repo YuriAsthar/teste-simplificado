@@ -12,5 +12,5 @@ Feature-level tests that exercise specific migrations in isolation to verify sch
 - Assertions verify both the column/backfill values and the nullable request_hash behavior.
 
 ## Related
-- Parent: /app/tests/Feature/agents.md
-- Related: /app/database/migrations/agents.md
+- Parent: /app/tests/Feature/AGENTS.md
+- Related: /app/database/migrations/AGENTS.md

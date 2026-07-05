@@ -11,6 +11,6 @@ Event listeners that handle domain side effects decoupled from model persistence
 - Registration happens in `App\Providers\EventServiceProvider`.
 
 ## Related
-- Parent: /app/agents.md
-- Sibling: /app/Events/agents.md
-- Related: /app/Providers/agents.md
+- Parent: /app/AGENTS.md
+- Sibling: /app/Events/AGENTS.md
+- Related: /app/Providers/AGENTS.md

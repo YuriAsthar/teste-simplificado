@@ -11,5 +11,5 @@ Laravel configuration files and application-specific config.
 - Keep domain-specific config grouped in dedicated files.
 
 ## Related
-- Parent: /app/agents.md
-- Related: /app/Services/agents.md, /app/Console/Commands/agents.md
+- Parent: /app/AGENTS.md
+- Related: /app/Services/AGENTS.md, /app/Console/Commands/AGENTS.md

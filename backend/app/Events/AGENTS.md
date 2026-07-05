@@ -11,5 +11,5 @@ Lightweight domain events fired by models to trigger side effects.
 - Model lifecycle hooks in `app/Models/` fire events; listeners in `app/Listeners/` react to them.
 
 ## Related
-- Parent: /app/agents.md
-- Sibling: /app/Listeners/agents.md
+- Parent: /app/AGENTS.md
+- Sibling: /app/Listeners/AGENTS.md

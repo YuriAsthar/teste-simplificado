@@ -53,7 +53,7 @@ Every Kafka message uses the same envelope structure:
 {
   "meta": {
     "version": "1.0",
-    "event": "transfer.authorized",
+    "event": "transfer.completed",
     "occurred_at": "2026-06-29T12:34:56-03:00"
   },
   "payload": {

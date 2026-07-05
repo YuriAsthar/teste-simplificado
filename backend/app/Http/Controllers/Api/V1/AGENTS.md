@@ -17,5 +17,5 @@ REST API controllers for version 1 of the payment domain.
 - Controllers do not extend a base Controller class; they are plain invokable classes.
 
 ## Related
-- Parent: ./agents.md
-- Related: ./app/Http/Requests/agents.md, ./app/Services/agents.md
+- Parent: ./AGENTS.md
+- Related: ./app/Http/Requests/AGENTS.md, ./app/Services/AGENTS.md

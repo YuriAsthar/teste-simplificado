@@ -17,4 +17,4 @@ Backed enums representing domain values and status/lifecycle concepts.
 - Enum-specific behavior (labels, descriptions, transitions) lives in small methods on the enum itself.
 
 ## Related
-- Parent: /app/agents.md
+- Parent: /app/AGENTS.md
